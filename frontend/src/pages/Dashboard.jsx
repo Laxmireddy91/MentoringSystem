@@ -128,13 +128,7 @@ const roleInfo = {
       "Department insight becomes meaningful when it leads to action.",
   },
 
-  principal: {
-    label: "Principal",
-    title: "Principal Dashboard",
-    accent: "teal",
-    quote:
-      "Institutional decisions are stronger when every department is visible.",
-  },
+
 };
 
 /* =========================================================
@@ -403,8 +397,8 @@ export default function Dashboard({
 
   useEffect(() => {
     if (
-      role !== "hod" &&
-      role !== "principal"
+      role !== "hod"
+  
     ) {
       return;
     }
@@ -498,21 +492,14 @@ export default function Dashboard({
     "profile",
   ];
 
-  const principalTabs = [
-    "overview",
-    "departments",
-    "faculty",
-    "student-performance",
-    "reports",
-    "profile",
-  ];
+
 
   const tabs =
     {
       student: studentTabs,
       mentor: mentorTabs,
       hod: hodTabs,
-      principal: principalTabs,
+
     }[role] ||
     studentTabs;
 
@@ -1601,10 +1588,7 @@ export default function Dashboard({
 
             <CardTitle
               title={
-                role ===
-                "principal"
-                  ? "Institutional Overview"
-                  : role === "hod"
+                  role === "hod"
                   ? "Department Overview"
                   : role ===
                     "mentor"

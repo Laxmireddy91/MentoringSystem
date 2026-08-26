@@ -460,10 +460,6 @@ export default function Register() {
                     HOD
                   </option>
 
-                  <option value="principal">
-                    Principal
-                  </option>
-
                 </select>
               </div>
 

@@ -15,7 +15,7 @@ router.use(protect);
 const getId = (req) => req.params.id;
 
 const roleCanManageAcademic =
-  allowRoles("mentor", "hod", "principal");
+  allowRoles("mentor", "hod");
 
 
 /*
@@ -1002,7 +1002,7 @@ router.delete(
   "/students/:id",
   allowRoles(
     "hod",
-    "principal"
+   
   ),
   async (
     req,
@@ -1200,7 +1200,7 @@ router.post(
   "/mentors",
   allowRoles(
     "hod",
-    "principal"
+   
   ),
   async (
     req,
@@ -1242,7 +1242,7 @@ router.put(
   "/mentors/:id",
   allowRoles(
     "hod",
-    "principal"
+  
   ),
   async (
     req,
@@ -1290,7 +1290,7 @@ router.delete(
   "/mentors/:id",
   allowRoles(
     "hod",
-    "principal"
+  
   ),
   async (
     req,
@@ -1335,7 +1335,7 @@ router.post(
   allowRoles(
     "mentor",
     "hod",
-    "principal"
+    
   ),
   async (
     req,
@@ -1394,7 +1394,7 @@ router.put(
   allowRoles(
     "mentor",
     "hod",
-    "principal"
+   
   ),
   async (
     req,
@@ -1453,7 +1453,7 @@ router.delete(
   allowRoles(
     "mentor",
     "hod",
-    "principal"
+    
   ),
   async (
     req,
@@ -1722,7 +1722,7 @@ router.get(
   "/analytics",
   allowRoles(
     "hod",
-    "principal"
+    
   ),
   async (
     req,

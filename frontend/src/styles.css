@@ -35,7 +35,18 @@
 .section-heading span{font-size:12px;font-weight:800;letter-spacing:2px;color:#6650d5}
 .section-heading h2{font-size:37px;margin:10px 0 5px;color:#101a4b}
 .section-heading p{margin:0;color:#6d7191}
-.role-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:30px}
+
+.role-grid {
+  width: min(1100px, 92%);
+  margin: 40px auto 0;
+
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+
+  /* More space between Student, Mentor and HOD */
+  column-gap: 55px;
+  row-gap: 30px;
+}
 .role-card{background:rgba(255,255,255,.9);border-radius:17px;padding:25px 17px 17px;text-align:center;border:1px solid #dfe1f4;box-shadow:0 12px 35px #24276c12}
 .role-card .role-icon{width:60px;height:60px;margin:0 auto 15px;border-radius:14px;display:grid;place-items:center;font-size:28px}
 .role-card h3{margin:0 0 10px;color:#12183f}

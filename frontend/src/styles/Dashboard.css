@@ -1806,54 +1806,6 @@
 }
 
 /* =========================================================
-   ATTENDANCE
-========================================================= */
-
-.mc-att-summary {
-  display: grid;
-
-  grid-template-columns:
-    repeat(3, 1fr);
-
-  gap: 10px;
-
-  margin-bottom: 14px;
-}
-
-.mc-att-summary > div {
-  padding:
-    14px;
-
-  border:
-    1px solid
-    #eceef2;
-
-  border-radius: 10px;
-
-  background:
-    #fafbfc;
-}
-
-.mc-att-summary b {
-  display: block;
-
-  font-size: 22px;
-
-  color:
-    var(--mc-primary);
-}
-
-.mc-att-summary span {
-  display: block;
-
-  margin-top: 4px;
-
-  color: #667085;
-
-  font-size: 9px;
-}
-
-/* =========================================================
    SESSION CARDS
 ========================================================= */
 

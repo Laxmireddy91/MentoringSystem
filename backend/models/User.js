@@ -27,7 +27,7 @@ const userSchema = new mongoose.Schema(
         "student",
         "mentor",
         "hod",
-        "principal",
+       
       ],
       required: true,
     },

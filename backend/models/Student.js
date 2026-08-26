@@ -51,12 +51,17 @@ const subjectSchema = new mongoose.Schema(
   }
 );
 
+
 /* =========================================================
    STUDENT
 ========================================================= */
 
 const studentSchema = new mongoose.Schema(
   {
+    /* -------------------------------------------------------
+       BASIC INFORMATION
+    ------------------------------------------------------- */
+
     usn: {
       type: String,
       unique: true,
@@ -90,14 +95,11 @@ const studentSchema = new mongoose.Schema(
       trim: true,
     },
 
-    attendance: {
-      type: Number,
-      default: 0,
-      min: 0,
-      max: 100,
-    },
 
-    /* Overall marks */
+    /* -------------------------------------------------------
+       OVERALL MARKS
+       Attendance has been completely removed.
+    ------------------------------------------------------- */
 
     cie1: {
       type: Number,
@@ -139,16 +141,31 @@ const studentSchema = new mongoose.Schema(
       default: 0,
     },
 
+
+    /* -------------------------------------------------------
+       CONTACT
+    ------------------------------------------------------- */
+
     phone: {
       type: String,
       default: "",
       trim: true,
     },
 
+
+    /* -------------------------------------------------------
+       SUBJECTS
+    ------------------------------------------------------- */
+
     subjects: {
       type: [subjectSchema],
       default: [],
     },
+
+
+    /* -------------------------------------------------------
+       MARK UPDATE INFORMATION
+    ------------------------------------------------------- */
 
     marksUpdatedBy: {
       type: String,
@@ -159,7 +176,10 @@ const studentSchema = new mongoose.Schema(
       type: Date,
     },
 
-    /* Link with User */
+
+    /* -------------------------------------------------------
+       LINK WITH USER
+    ------------------------------------------------------- */
 
     user: {
       type: mongoose.Schema.Types.ObjectId,
@@ -168,10 +188,16 @@ const studentSchema = new mongoose.Schema(
       sparse: true,
     },
   },
+
   {
     timestamps: true,
   }
 );
+
+
+/* =========================================================
+   EXPORT
+========================================================= */
 
 export default mongoose.model(
   "Student",

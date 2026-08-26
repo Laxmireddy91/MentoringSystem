@@ -18,7 +18,7 @@ const roles = [
   "student",
   "mentor",
   "hod",
-  "principal",
+  
 ];
 
 /*
@@ -37,12 +37,9 @@ const sections = [
   "tasks",
   "students",
   "performance",
-  "attendance",
   "sessions",
   "mentors",
   "student-performance",
-  "departments",
-  "faculty",
 ];
 
 /*
