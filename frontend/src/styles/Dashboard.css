@@ -2705,3 +2705,209 @@
     min-width: 100px;
   }
 }
+
+/* =========================================================
+   AI STUDENT RISK MONITOR
+   ========================================================= */
+
+.mc-ai-risk-card {
+  width: 100%;
+  min-height: 360px;
+}
+
+.mc-ai-loading,
+.mc-ai-error,
+.mc-ai-empty {
+  padding: 24px;
+  text-align: center;
+  font-size: 14px;
+  color: #64748b;
+}
+
+/* Risk summary */
+
+.mc-risk-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin: 18px 0 22px;
+}
+
+.mc-risk-box {
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.mc-risk-box span {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.mc-risk-box strong {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.mc-risk-box small {
+  font-size: 11px;
+  color: #64748b;
+}
+
+/* High */
+
+.mc-risk-box.high {
+  background: #fff1f2;
+  border-color: #fecdd3;
+}
+
+.mc-risk-box.high span {
+  color: #dc2626;
+}
+
+.mc-risk-box.high strong {
+  color: #b91c1c;
+}
+
+/* Medium */
+
+.mc-risk-box.medium {
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+
+.mc-risk-box.medium span {
+  color: #ea580c;
+}
+
+.mc-risk-box.medium strong {
+  color: #c2410c;
+}
+
+/* Low */
+
+.mc-risk-box.low {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.mc-risk-box.low span {
+  color: #16a34a;
+}
+
+.mc-risk-box.low strong {
+  color: #15803d;
+}
+
+
+/* =========================================================
+   RISK STUDENT LIST
+   ========================================================= */
+
+.mc-ai-risk-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mc-ai-risk-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.6fr) 1fr 1fr auto;
+  align-items: center;
+  gap: 18px;
+  padding: 14px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+  transition: 0.2s ease;
+}
+
+.mc-ai-risk-row:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.07);
+}
+
+.mc-ai-student {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mc-ai-student strong {
+  font-size: 14px;
+  color: #172554;
+}
+
+.mc-ai-student small {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.mc-ai-label {
+  display: block;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  margin-bottom: 4px;
+}
+
+.mc-ai-risk-row > div > strong {
+  font-size: 14px;
+  color: #172554;
+}
+
+
+/* =========================================================
+   RISK PILLS
+   ========================================================= */
+
+.mc-ai-risk-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 11px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.mc-ai-risk-pill.high {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.mc-ai-risk-pill.medium {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 900px) {
+
+  .mc-risk-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .mc-ai-risk-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+}
+
+@media (max-width: 600px) {
+
+  .mc-ai-risk-row {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+}

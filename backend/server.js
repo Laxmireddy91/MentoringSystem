@@ -7,6 +7,7 @@ import connectDB from "./config/db.js";
 
 import authRoutes from "./routes/authRoutes.js";
 import workspaceRoutes from "./routes/workspaceRoutes.js";
+import riskRoutes from "./routes/riskRoutes.js";
 
 const app = express();
 
@@ -60,6 +61,11 @@ app.use(
 app.use(
   "/api/workspace",
   workspaceRoutes
+);
+
+app.use(
+  "/api/risk",
+  riskRoutes
 );
 
 /* =========================================================

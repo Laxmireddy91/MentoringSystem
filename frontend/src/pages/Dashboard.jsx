@@ -201,6 +201,15 @@ export default function Dashboard({
   const [analytics, setAnalytics] =
     useState(null);
 
+const [riskStudents, setRiskStudents] =
+  useState([]);
+
+const [riskLoading, setRiskLoading] =
+  useState(false);
+
+const [riskError, setRiskError] =
+  useState("");
+
   /* =======================================================
      LOAD DASHBOARD
   ======================================================= */
@@ -288,6 +297,61 @@ export default function Dashboard({
       }
     };
 
+
+    const loadRiskStudents =
+  async () => {
+    if (
+      role !== "mentor" &&
+      role !== "hod"
+    ) {
+      return;
+    }
+
+    try {
+      setRiskLoading(true);
+      setRiskError("");
+
+      const response =
+        await api.risk.allStudents();
+
+      if (!response?.success) {
+        throw new Error(
+          response?.message ||
+            "Unable to load student risk analysis."
+        );
+      }
+
+      setRiskStudents(
+        Array.isArray(
+          response.students
+        )
+          ? response.students
+          : []
+      );
+    } catch (error) {
+      console.error(
+        "Risk analysis error:",
+        error
+      );
+
+      setRiskError(
+        error?.message ||
+          "Unable to load student risk analysis."
+      );
+    } finally {
+      setRiskLoading(false);
+    }
+  };
+
+
+  useEffect(() => {
+  if (
+    role === "mentor" ||
+    role === "hod"
+  ) {
+    loadRiskStudents();
+  }
+}, [role]);
   /* =======================================================
      LOAD DASHBOARD ON OPEN
   ======================================================= */
@@ -1679,6 +1743,176 @@ export default function Dashboard({
 
 
         <div className="mc-grid-2">
+                  {/* =====================================================
+            AI STUDENT RISK MONITOR
+        ====================================================== */}
+
+        {(role === "mentor" || role === "hod") && (
+          <section className="mc-card mc-ai-risk-card">
+
+            <CardTitle
+              title="🤖 AI Student Risk Monitor"
+              sub="Early-warning analysis based on academic performance"
+            />
+
+            {riskLoading ? (
+              <div className="mc-ai-loading">
+                Analyzing student performance...
+              </div>
+            ) : riskError ? (
+              <div className="mc-ai-error">
+                {riskError}
+              </div>
+            ) : (
+              <>
+                {/* Risk Summary */}
+
+                <div className="mc-risk-summary">
+
+                  <div className="mc-risk-box high">
+                    <span>High Risk</span>
+
+                    <strong>
+                      {
+                        riskStudents.filter(
+                          (student) =>
+                            student.level === "High"
+                        ).length
+                      }
+                    </strong>
+
+                    <small>
+                      Immediate attention
+                    </small>
+                  </div>
+
+
+                  <div className="mc-risk-box medium">
+                    <span>Medium Risk</span>
+
+                    <strong>
+                      {
+                        riskStudents.filter(
+                          (student) =>
+                            student.level === "Medium"
+                        ).length
+                      }
+                    </strong>
+
+                    <small>
+                      Needs monitoring
+                    </small>
+                  </div>
+
+
+                  <div className="mc-risk-box low">
+                    <span>Low Risk</span>
+
+                    <strong>
+                      {
+                        riskStudents.filter(
+                          (student) =>
+                            student.level === "Low"
+                        ).length
+                      }
+                    </strong>
+
+                    <small>
+                      Performing well
+                    </small>
+                  </div>
+
+                </div>
+
+
+                {/* Students */}
+
+                {riskStudents.length === 0 ? (
+                  <div className="mc-ai-empty">
+                    No student risk data available.
+                  </div>
+                ) : (
+                  <div className="mc-ai-risk-list">
+
+                    {riskStudents
+                      .filter(
+                        (student) =>
+                          student.level === "High" ||
+                          student.level === "Medium"
+                      )
+                      .slice(0, 5)
+                      .map((student) => (
+
+                        <div
+                          className="mc-ai-risk-row"
+                          key={student.id}
+                        >
+
+                          <div className="mc-ai-student">
+
+                            <strong>
+                              {student.name}
+                            </strong>
+
+                            <small>
+                              {student.usn || "No USN"}
+                            </small>
+
+                          </div>
+
+
+                          <div>
+                            <span className="mc-ai-label">
+                              Performance
+                            </span>
+
+                            <strong>
+                              {student.total || 0}/100
+                            </strong>
+                          </div>
+
+
+                          <div>
+                            <span className="mc-ai-label">
+                              Backlogs
+                            </span>
+
+                            <strong>
+                              {student.backlog || 0}
+                            </strong>
+                          </div>
+
+
+                          <div>
+
+                            <span
+                              className={
+                                `mc-ai-risk-pill ${
+                                  student.level === "High"
+                                    ? "high"
+                                    : "medium"
+                                }`
+                              }
+                            >
+                              {student.level === "High"
+                                ? "🔴 HIGH"
+                                : "🟠 MEDIUM"}
+                            </span>
+
+                          </div>
+
+                        </div>
+
+                      ))}
+
+                  </div>
+                )}
+
+              </>
+            )}
+
+          </section>
+        )}
 
           <section className="mc-card">
 

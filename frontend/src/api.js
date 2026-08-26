@@ -368,6 +368,17 @@ const api = {
         profile
       ),
   },
+
+  /**
+   * AI Student Risk Analysis
+   */
+  risk: {
+    allStudents: () =>
+      get("/risk/students"),
+
+    student: (id) =>
+      get(`/risk/students/${id}`),
+  },
 };
 
 
