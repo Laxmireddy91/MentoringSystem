@@ -9,7 +9,6 @@ import {
 } from "react-router-dom";
 
 import Sidebar from "../components/Sidebar";
-import Messages from "../components/Messages";
 import api from "../api";
 
 /* =========================================================
@@ -100,108 +99,6 @@ function normalizeRecord(item) {
   };
 }
 
-function blankMentorshipRow() {
-  return {
-    date: "",
-    code: "",
-    details: "",
-    actionTaken: "",
-    studentSigned: false,
-    mentorSigned: false,
-  };
-}
-
-function blankBacklogRow() {
-  return {
-    courseName: "",
-    yearOfPass: "",
-    extMarks: "",
-    remarks: "",
-  };
-}
-
-function reportDraft(student) {
-  const mentorship = Array.isArray(student?.mentorshipRecords)
-    ? student.mentorshipRecords.slice(0, 6).map((row) => ({
-        ...blankMentorshipRow(),
-        ...row,
-      }))
-    : [];
-
-  const backlogs = Array.isArray(student?.backlogRecords)
-    ? student.backlogRecords.slice(0, 20).map((row) => ({
-        ...blankBacklogRow(),
-        ...row,
-      }))
-    : [];
-
-  const subjects = (Array.isArray(student?.subjects) ? student.subjects : []).map((subject) => ({
-    code: subject?.code ?? "",
-    subject: subject?.subject ?? "",
-    cie1: subject?.cie1 ?? "",
-    cie2: subject?.cie2 ?? "",
-    cie3: subject?.cie3 ?? "",
-    beforeRvSee: subject?.beforeRvSee ?? "",
-    afterRvSee: subject?.afterRvSee ?? "",
-    final: subject?.final ?? "",
-    set: subject?.set ?? "",
-    total: subject?.total ?? subjectCalculatedTotal(subject),
-    grade: ["Pass", "Fail"].includes(subject?.grade)
-      ? subject.grade
-      : gradeFromTotal(subject?.total ?? subjectCalculatedTotal(subject)),
-    _id: subject?._id,
-    id: subject?.id,
-  }));
-
-  const subjectTotals = subjects
-    .map((subject) => Number(subject.total))
-    .filter((value) => Number.isFinite(value));
-
-  const derivedTotalMarks = subjectTotals.length
-    ? subjectTotals.reduce((sum, value) => sum + value, 0)
-    : "";
-
-  const derivedPercentage = subjectTotals.length
-    ? Number(((derivedTotalMarks / (subjectTotals.length * 100)) * 100).toFixed(2))
-    : "";
-
-  return {
-    name: student?.name ?? "",
-    usn: student?.usn ?? "",
-    dept: student?.dept ?? "",
-    year: student?.year ?? "",
-    mentor: student?.mentor ?? "",
-    subjects,
-    mentorshipRecords: Array.from({ length: 6 }, (_, index) =>
-      mentorship[index] || blankMentorshipRow()
-    ),
-    backlogRecords: Array.from({ length: 6 }, (_, index) =>
-      backlogs[index] || blankBacklogRow()
-    ),
-    sgpa: student?.sgpa ?? "",
-    cgpa: student?.cgpa ?? "",
-    onlineCoursesAttended: Boolean(Number(student?.onlineCoursesAttended || 0)),
-    totalMarks: student?.totalMarks ?? derivedTotalMarks,
-    percentage: student?.percentage ?? derivedPercentage,
-  };
-}
-
-function assetUrl(filePath = "") {
-  if (!filePath) return "";
-  if (/^https?:\/\//i.test(filePath)) return filePath;
-  const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
-  return `${apiBase.replace(/\/api\/?$/, "")}${filePath.startsWith("/") ? filePath : `/${filePath}`}`;
-}
-
-function fileToDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(new Error("Unable to read the selected file"));
-    reader.readAsDataURL(file);
-  });
-}
-
 /* =========================================================
    ROLE INFORMATION
 ========================================================= */
@@ -231,7 +128,13 @@ const roleInfo = {
       "Department insight becomes meaningful when it leads to action.",
   },
 
-
+  principal: {
+    label: "Principal",
+    title: "Principal Dashboard",
+    accent: "teal",
+    quote:
+      "Institutional decisions are stronger when every department is visible.",
+  },
 };
 
 /* =========================================================
@@ -261,27 +164,6 @@ function subjectRecords(student) {
   }
 
   return [];
-}
-
-function gradeFromTotal(total) {
-  const value = Number(total);
-  if (!Number.isFinite(value) || value <= 0) return "";
-  return value >= 40 ? "Pass" : "Fail";
-}
-
-function subjectCalculatedTotal(subject = {}) {
-  const values = [
-    subject.cie1,
-    subject.cie2,
-    subject.cie3,
-    subject.final,
-    subject.set,
-  ].map(Number);
-
-  const hasAnyMark = values.some((value) => Number.isFinite(value) && value > 0);
-  if (!hasAnyMark) return "";
-
-  return Math.round(values.reduce((sum, value) => sum + (Number.isFinite(value) ? value : 0), 0) / 5);
 }
 
 /* =========================================================
@@ -324,15 +206,6 @@ export default function Dashboard({
 
   const [analytics, setAnalytics] =
     useState(null);
-
-const [riskStudents, setRiskStudents] =
-  useState([]);
-
-const [riskLoading, setRiskLoading] =
-  useState(false);
-
-const [riskError, setRiskError] =
-  useState("");
 
   /* =======================================================
      LOAD DASHBOARD
@@ -421,61 +294,6 @@ const [riskError, setRiskError] =
       }
     };
 
-
-    const loadRiskStudents =
-  async () => {
-    if (
-      role !== "mentor" &&
-      role !== "hod"
-    ) {
-      return;
-    }
-
-    try {
-      setRiskLoading(true);
-      setRiskError("");
-
-      const response =
-        await api.risk.allStudents();
-
-      if (!response?.success) {
-        throw new Error(
-          response?.message ||
-            "Unable to load student risk analysis."
-        );
-      }
-
-      setRiskStudents(
-        Array.isArray(
-          response.students
-        )
-          ? response.students
-          : []
-      );
-    } catch (error) {
-      console.error(
-        "Risk analysis error:",
-        error
-      );
-
-      setRiskError(
-        error?.message ||
-          "Unable to load student risk analysis."
-      );
-    } finally {
-      setRiskLoading(false);
-    }
-  };
-
-
-  useEffect(() => {
-  if (
-    role === "mentor" ||
-    role === "hod"
-  ) {
-    loadRiskStudents();
-  }
-}, [role]);
   /* =======================================================
      LOAD DASHBOARD ON OPEN
   ======================================================= */
@@ -585,8 +403,8 @@ const [riskError, setRiskError] =
 
   useEffect(() => {
     if (
-      role !== "hod"
-  
+      role !== "hod" &&
+      role !== "principal"
     ) {
       return;
     }
@@ -652,23 +470,21 @@ const [riskError, setRiskError] =
      TABS
   ======================================================= */
 
-const studentTabs = [
-  "overview",
-  "academic-records",
-  "schedule",
-  "reports",
-  "notifications",
-  "messages",
-  "tasks",
-  "profile",
-];
+  const studentTabs = [
+    "overview",
+    "academic-records",
+    "profile",
+    "schedule",
+    "reports",
+    "notifications",
+    "tasks",
+  ];
 
   const mentorTabs = [
     "overview",
     "students",
     "performance",
     "sessions",
-    "messages",
     "reports",
     "profile",
   ];
@@ -682,14 +498,21 @@ const studentTabs = [
     "profile",
   ];
 
-
+  const principalTabs = [
+    "overview",
+    "departments",
+    "faculty",
+    "student-performance",
+    "reports",
+    "profile",
+  ];
 
   const tabs =
     {
       student: studentTabs,
       mentor: mentorTabs,
       hod: hodTabs,
-
+      principal: principalTabs,
     }[role] ||
     studentTabs;
 
@@ -807,12 +630,6 @@ const studentTabs = [
         total: 0,
         grade: "",
         backlog: 0,
-        parentName: "",
-parentRelation: "",
-parentPhone: "",
-parentEmail: "",
-emergencyContact: "",
-
         subjects: [],
       },
     });
@@ -833,11 +650,6 @@ emergencyContact: "",
         name: item.name,
         usn: item.usn,
         phone: item.phone,
-        parentName: item.parentName || "",
-parentRelation: item.parentRelation || "",
-parentPhone: item.parentPhone || "",
-parentEmail: item.parentEmail || "",
-emergencyContact: item.emergencyContact || "",
         dept: item.dept,
         year: item.year,
         mentor: item.mentor,
@@ -1077,31 +889,6 @@ emergencyContact: item.emergencyContact || "",
         error.message ||
           "Unable to update marks"
       );
-    }
-  }
-
-  /* =======================================================
-     SAVE DIGITAL PERFORMANCE REPORT
-  ======================================================= */
-
-  async function savePerformanceReport(studentId, report) {
-    try {
-      setSaving(true);
-
-      await api.students.updatePerformanceReport(
-        studentId,
-        report
-      );
-
-      await refreshDashboard();
-      notify("Performance report saved successfully");
-      return true;
-    } catch (error) {
-      console.error(error);
-      notify(error.message || "Unable to save performance report");
-      return false;
-    } finally {
-      setSaving(false);
     }
   }
 
@@ -1814,7 +1601,10 @@ emergencyContact: item.emergencyContact || "",
 
             <CardTitle
               title={
-                  role === "hod"
+                role ===
+                "principal"
+                  ? "Institutional Overview"
+                  : role === "hod"
                   ? "Department Overview"
                   : role ===
                     "mentor"
@@ -1905,176 +1695,6 @@ emergencyContact: item.emergencyContact || "",
 
 
         <div className="mc-grid-2">
-                  {/* =====================================================
-            AI STUDENT RISK MONITOR
-        ====================================================== */}
-
-        {(role === "mentor" || role === "hod") && (
-          <section className="mc-card mc-ai-risk-card">
-
-            <CardTitle
-              title="🤖 AI Student Risk Monitor"
-              sub="Early-warning analysis based on academic performance"
-            />
-
-            {riskLoading ? (
-              <div className="mc-ai-loading">
-                Analyzing student performance...
-              </div>
-            ) : riskError ? (
-              <div className="mc-ai-error">
-                {riskError}
-              </div>
-            ) : (
-              <>
-                {/* Risk Summary */}
-
-                <div className="mc-risk-summary">
-
-                  <div className="mc-risk-box high">
-                    <span>High Risk</span>
-
-                    <strong>
-                      {
-                        riskStudents.filter(
-                          (student) =>
-                            student.level === "High"
-                        ).length
-                      }
-                    </strong>
-
-                    <small>
-                      Immediate attention
-                    </small>
-                  </div>
-
-
-                  <div className="mc-risk-box medium">
-                    <span>Medium Risk</span>
-
-                    <strong>
-                      {
-                        riskStudents.filter(
-                          (student) =>
-                            student.level === "Medium"
-                        ).length
-                      }
-                    </strong>
-
-                    <small>
-                      Needs monitoring
-                    </small>
-                  </div>
-
-
-                  <div className="mc-risk-box low">
-                    <span>Low Risk</span>
-
-                    <strong>
-                      {
-                        riskStudents.filter(
-                          (student) =>
-                            student.level === "Low"
-                        ).length
-                      }
-                    </strong>
-
-                    <small>
-                      Performing well
-                    </small>
-                  </div>
-
-                </div>
-
-
-                {/* Students */}
-
-                {riskStudents.length === 0 ? (
-                  <div className="mc-ai-empty">
-                    No student risk data available.
-                  </div>
-                ) : (
-                  <div className="mc-ai-risk-list">
-
-                    {riskStudents
-                      .filter(
-                        (student) =>
-                          student.level === "High" ||
-                          student.level === "Medium"
-                      )
-                      .slice(0, 5)
-                      .map((student) => (
-
-                        <div
-                          className="mc-ai-risk-row"
-                          key={student.id}
-                        >
-
-                          <div className="mc-ai-student">
-
-                            <strong>
-                              {student.name}
-                            </strong>
-
-                            <small>
-                              {student.usn || "No USN"}
-                            </small>
-
-                          </div>
-
-
-                          <div>
-                            <span className="mc-ai-label">
-                              Performance
-                            </span>
-
-                            <strong>
-                              {student.total || 0}/100
-                            </strong>
-                          </div>
-
-
-                          <div>
-                            <span className="mc-ai-label">
-                              Backlogs
-                            </span>
-
-                            <strong>
-                              {student.backlog || 0}
-                            </strong>
-                          </div>
-
-
-                          <div>
-
-                            <span
-                              className={
-                                `mc-ai-risk-pill ${
-                                  student.level === "High"
-                                    ? "high"
-                                    : "medium"
-                                }`
-                              }
-                            >
-                              {student.level === "High"
-                                ? "🔴 HIGH"
-                                : "🟠 MEDIUM"}
-                            </span>
-
-                          </div>
-
-                        </div>
-
-                      ))}
-
-                  </div>
-                )}
-
-              </>
-            )}
-
-          </section>
-        )}
 
           <section className="mc-card">
 
@@ -2285,105 +1905,6 @@ emergencyContact: item.emergencyContact || "",
             )}
 
           </div>
-          {/* =====================================================
-    PARENT / GUARDIAN INFORMATION
-===================================================== */}
-
-{role === "student" && (() => {
-  const student =
-    data.students.find(
-      (item) =>
-        item.usn &&
-        profile.usn &&
-        item.usn === profile.usn
-    ) ||
-    data.students.find(
-      (item) =>
-        item.name &&
-        profile.name &&
-        item.name === profile.name
-    );
-
-  if (!student) {
-    return null;
-  }
-
-  return (
-    <div
-      style={{
-        marginTop: "24px",
-        paddingTop: "24px",
-        borderTop: "1px solid #e5e7eb",
-      }}
-    >
-      <div style={{ marginBottom: "16px" }}>
-        <h3
-          style={{
-            margin: 0,
-            fontSize: "18px",
-          }}
-        >
-          👨‍👩‍👧 Parent / Guardian Information
-        </h3>
-
-        <p
-          style={{
-            margin: "6px 0 0",
-            color: "#6b7280",
-            fontSize: "13px",
-          }}
-        >
-          Guardian information used for student support
-          and emergency communication.
-        </p>
-      </div>
-
-      <div className="mc-form-grid">
-
-        <label>
-          Parent / Guardian Name
-          <input
-            value={student.parentName || ""}
-            readOnly
-          />
-        </label>
-
-        <label>
-          Relationship
-          <input
-            value={student.parentRelation || ""}
-            readOnly
-          />
-        </label>
-
-        <label>
-          Parent Phone
-          <input
-            value={student.parentPhone || ""}
-            readOnly
-          />
-        </label>
-
-        <label>
-          Parent Email
-          <input
-            value={student.parentEmail || ""}
-            readOnly
-          />
-        </label>
-
-        <label>
-          Emergency Contact
-          <input
-            value={student.emergencyContact || ""}
-            readOnly
-          />
-        </label>
-
-      </div>
-    </div>
-  );
-})()}
 
           <button
             className="mc-primary"
@@ -2633,7 +2154,512 @@ emergencyContact: item.emergencyContact || "",
   ======================================================= */
 
   function AcademicRecords() {
-    return <Performance />;
+    const profile =
+      data.profiles?.student ||
+      {};
+
+    const student =
+      data.students.find(
+        (item) =>
+          item.usn &&
+          item.usn ===
+            profile.usn
+      ) ||
+      data.students.find(
+        (item) =>
+          item.name &&
+          item.name ===
+            profile.name
+      ) ||
+      data.students[0];
+
+    if (!student) {
+      return (
+        <section className="mc-card">
+          <CardTitle
+            title="Academic Records"
+            sub="No academic record is available yet."
+          />
+        </section>
+      );
+    }
+
+    const marks = [
+      [
+        "CIE I",
+        student.cie1,
+      ],
+
+      [
+        "CIE II",
+        student.cie2,
+      ],
+
+      [
+        "CIE III",
+        student.cie3,
+      ],
+
+      [
+        "Final Marks",
+        student.final,
+      ],
+
+      [
+        "SET Marks",
+        student.set,
+      ],
+
+      [
+        "Total Marks",
+        student.total,
+      ],
+    ];
+
+    return (
+      <section className="mc-card academic-records">
+
+        <CardTitle
+          title="My Academic Records"
+          sub="Marks entered by your mentor and reviewed by the HOD. This page is read-only for students."
+        />
+
+        <div className="mc-readonly-banner">
+
+          <span>
+            🔒
+          </span>
+
+          <div>
+            <b>
+              Student view — editing is disabled
+            </b>
+
+            <small>
+              Your mentor/HOD can update academic records. You can only view the latest values.
+            </small>
+          </div>
+
+        </div>
+
+
+        <div className="mc-record-identity">
+
+          <div>
+            <span>
+              Student
+            </span>
+
+            <b>
+              {student.name}
+            </b>
+          </div>
+
+          <div>
+            <span>
+              USN
+            </span>
+
+            <b>
+              {student.usn ||
+                "—"}
+            </b>
+          </div>
+
+          <div>
+            <span>
+              Department
+            </span>
+
+            <b>
+              {student.dept ||
+                "—"}
+            </b>
+          </div>
+
+          <div>
+            <span>
+              Semester / Year
+            </span>
+
+            <b>
+              {student.year ||
+                "—"}
+            </b>
+          </div>
+
+        </div>
+
+
+        <div className="mc-mark-summary">
+
+          {marks.map(
+            ([label, value]) => (
+              <div
+                key={label}
+              >
+                <span>
+                  {label}
+                </span>
+
+                <strong>
+                  {value ??
+                    "—"}
+                </strong>
+
+                <small>
+                  Marks
+                </small>
+              </div>
+            )
+          )}
+
+          <div>
+            <span>
+              Grade
+            </span>
+
+            <strong>
+              {student.grade ||
+                "—"}
+            </strong>
+
+            <small>
+              Current grade
+            </small>
+          </div>
+
+        </div>
+
+
+        <div className="mc-record-grid">
+
+          <div className="mc-record-panel">
+
+            <h3>
+              Mentor Record
+            </h3>
+
+            <p>
+              <b>
+                Mentor:
+              </b>{" "}
+              {student.mentor ||
+                "—"}
+            </p>
+
+            <p>
+              <b>
+                Performance:
+              </b>{" "}
+              {student.total ??
+                0}
+              /100
+            </p>
+
+
+            <p>
+              <b>
+                Backlogs:
+              </b>{" "}
+              {student.backlog ??
+                0}
+            </p>
+
+            <span className="mc-status-ok">
+              ✓ Marks available
+            </span>
+
+          </div>
+
+
+          <div className="mc-record-panel">
+
+            <h3>
+              HOD Review
+            </h3>
+
+            <p>
+              <b>
+                Review status:
+              </b>{" "}
+              <span className="mc-status-ok">
+                Published
+              </span>
+            </p>
+
+            <p>
+              <b>
+                Record owner:
+              </b>{" "}
+              Department Academic Office
+            </p>
+
+            <p>
+              <b>
+                Last update:
+              </b>{" "}
+              {student.marksUpdatedAt
+                ? new Date(
+                    student.marksUpdatedAt
+                  ).toLocaleString()
+                : "Not available"}
+            </p>
+
+            <p>
+              <b>
+                Updated by:
+              </b>{" "}
+              {student.marksUpdatedBy ||
+                "Mentor / HOD"}
+            </p>
+
+          </div>
+
+        </div>
+
+
+        <div className="mc-readonly-table">
+
+          <h3>
+            Detailed Mark Sheet
+          </h3>
+
+          <div className="mc-table-wrap">
+
+            <table>
+
+              <thead>
+                <tr>
+                  <th>
+                    Assessment
+                  </th>
+
+                  <th>
+                    Marks
+                  </th>
+
+                  <th>
+                    Status
+                  </th>
+
+                  <th>
+                    Editable By
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody>
+
+                {marks.map(
+                  ([label, value]) => (
+                    <tr
+                      key={label}
+                    >
+                      <td>
+                        <b>
+                          {label}
+                        </b>
+                      </td>
+
+                      <td>
+                        <strong>
+                          {value ??
+                            "—"}
+                        </strong>
+                      </td>
+
+                      <td>
+                        <span className="mc-pill success">
+                          Published
+                        </span>
+                      </td>
+
+                      <td>
+                        Mentor / HOD
+                      </td>
+                    </tr>
+                  )
+                )}
+
+                <tr>
+                  <td>
+                    <b>
+                      Grade
+                    </b>
+                  </td>
+
+                  <td>
+                    <span className="mc-grade">
+                      {student.grade ||
+                        "—"}
+                    </span>
+                  </td>
+
+                  <td>
+                    <span className="mc-pill success">
+                      Published
+                    </span>
+                  </td>
+
+                  <td>
+                    Mentor / HOD
+                  </td>
+                </tr>
+
+              </tbody>
+
+            </table>
+
+          </div>
+
+        </div>
+
+
+        <div className="mc-readonly-table">
+
+          <h3>
+            Subject-wise Academic Marks
+          </h3>
+
+          <p className="mc-subtext">
+            Subject marks published by the mentor/HOD.
+          </p>
+
+          <div className="mc-table-wrap">
+
+            <table className="marks">
+
+              <thead>
+                <tr>
+                  <th>
+                    Sl.
+                  </th>
+
+                  <th>
+                    Subject
+                  </th>
+
+                  <th>
+                    CIE I
+                  </th>
+
+                  <th>
+                    CIE II
+                  </th>
+
+                  <th>
+                    CIE III
+                  </th>
+
+                  <th>
+                    Final
+                  </th>
+
+                  <th>
+                    SET
+                  </th>
+
+                  <th>
+                    Total
+                  </th>
+
+                  <th>
+                    Grade
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody>
+
+                {subjectRecords(
+                  student
+                ).map(
+                  (subject, index) => (
+                    <tr
+                      key={
+                        safeId(
+                          subject
+                        ) ||
+                        index
+                      }
+                    >
+                      <td>
+                        {index + 1}
+                      </td>
+
+                      <td>
+                        <b>
+                          {
+                            subject.subject
+                          }
+                        </b>
+                      </td>
+
+                      <td>
+                        {
+                          subject.cie1
+                        }
+                      </td>
+
+                      <td>
+                        {
+                          subject.cie2
+                        }
+                      </td>
+
+                      <td>
+                        {
+                          subject.cie3
+                        }
+                      </td>
+
+                      <td>
+                        {
+                          subject.final
+                        }
+                      </td>
+
+                      <td>
+                        {
+                          subject.set
+                        }
+                      </td>
+
+                      <td>
+                        <strong>
+                          {
+                            subject.total
+                          }
+                        </strong>
+                      </td>
+
+                      <td>
+                        <span className="mc-grade">
+                          {
+                            subject.grade
+                          }
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                )}
+
+              </tbody>
+
+            </table>
+
+          </div>
+
+        </div>
+
+
+        <div className="mc-record-note">
+          Academic records are synchronized with the mentor/HOD workspace. Students cannot edit marks.
+        </div>
+
+      </section>
+    );
   }
 
   /* =======================================================
@@ -2641,371 +2667,339 @@ emergencyContact: item.emergencyContact || "",
   ======================================================= */
 
   function Performance() {
-    const editable = role === "student" || role === "mentor" || role === "hod";
+    const editable =
+      role !== "student";
 
-    const visible = role === "student"
-      ? data.students.filter(
-          (student) =>
-            (student.usn && student.usn === data.profiles?.student?.usn) ||
-            (student.name && student.name === data.profiles?.student?.name)
-        )
-      : filteredStudents;
-
-    const defaultStudent = visible[0] || null;
-    const [selectedId, setSelectedId] = useState(safeId(defaultStudent));
-    const [draft, setDraft] = useState(() => reportDraft(defaultStudent));
-
-    useEffect(() => {
-      const nextId = visible.some((student) => safeId(student) === selectedId)
-        ? selectedId
-        : safeId(defaultStudent);
-
-      setSelectedId(nextId);
-
-      const selected =
-        visible.find((student) => safeId(student) === nextId) || defaultStudent;
-
-      setDraft(reportDraft(selected));
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [visible.length, selectedId, defaultStudent?.id]);
-
-    const selectedStudent =
-      visible.find((student) => safeId(student) === selectedId) || defaultStudent;
-
-    const updateDraft = (key, value) => {
-      setDraft((current) => ({ ...current, [key]: value }));
-    };
-
-    const updateSubjectDraft = (index, key, value) => {
-      setDraft((current) => ({
-        ...current,
-        subjects: current.subjects.map((subject, subjectIndex) =>
-          subjectIndex === index
-            ? {
-                ...subject,
-                [key]: [
-                  "cie1",
-                  "cie2",
-                  "cie3",
-                  "beforeRvSee",
-                  "afterRvSee",
-                  "final",
-                  "set",
-                  "total",
-                ].includes(key)
-                  ? (value === "" ? "" : Number(value))
-                  : value,
-              }
-            : subject
-        ),
-      }));
-    };
-
-    const addSubjectDraft = () => {
-      setDraft((current) => ({
-        ...current,
-        subjects: [
-          ...current.subjects,
-          {
-            code: "",
-            subject: "",
-            cie1: "",
-            cie2: "",
-            cie3: "",
-            beforeRvSee: "",
-            afterRvSee: "",
-            final: "",
-            set: "",
-            total: "",
-            grade: "",
-          },
-        ],
-      }));
-    };
-
-    const removeSubjectDraft = (index) => {
-      setDraft((current) => ({
-        ...current,
-        subjects: current.subjects.filter((_, subjectIndex) => subjectIndex !== index),
-      }));
-    };
-
-    const updateMentorship = (index, key, value) => {
-      setDraft((current) => ({
-        ...current,
-        mentorshipRecords: current.mentorshipRecords.map((row, rowIndex) =>
-          rowIndex === index ? { ...row, [key]: value } : row
-        ),
-      }));
-    };
-
-    const updateBacklog = (index, key, value) => {
-      setDraft((current) => ({
-        ...current,
-        backlogRecords: current.backlogRecords.map((row, rowIndex) =>
-          rowIndex === index ? { ...row, [key]: value } : row
-        ),
-      }));
-    };
-
-    const clearBacklog = (index) => {
-      setDraft((current) => ({
-        ...current,
-        backlogRecords: current.backlogRecords.filter((_, rowIndex) => rowIndex !== index),
-      }));
-    };
-
-    const addBacklogDraft = () => {
-      setDraft((current) => ({
-        ...current,
-        backlogRecords: [...current.backlogRecords, blankBacklogRow()],
-      }));
-    };
-
-    const save = async () => {
-      if (!selectedStudent) return;
-      await savePerformanceReport(safeId(selectedStudent), draft);
-    };
-
-    if (!selectedStudent) {
-      return (
-        <section className="mc-card mc-digital-report">
-          <CardTitle
-            title="PERFORMANCE REPORT"
-          />
-        </section>
-      );
-    }
+    const visible =
+      editable
+        ? filteredStudents
+        : filteredStudents.filter(
+            (student) =>
+              student.usn ===
+              data.profiles?.student
+                ?.usn
+          );
 
     return (
-      <section className="mc-card mc-digital-report">
+      <section className="mc-card">
+
         <CardTitle
-          title="PERFORMANCE REPORT"
+          title="Performance Report"
+          sub={
+            editable
+              ? "Maintain subject-wise CIE, Final, SET, Total and Grade records."
+              : "View your published academic performance."
+          }
         >
-          <div className="mc-inline-actions">
-            <button className="mc-outline-btn" onClick={() => window.print()}>Print Report</button>
-            {editable && (
-              <button className="mc-primary" onClick={save} disabled={saving}>
-                {saving ? "Saving..." : "Save Report"}
-              </button>
-            )}
-          </div>
+
+          {editable && (
+            <button
+              className="mc-primary"
+              onClick={
+                addStudent
+              }
+            >
+              + Add Student
+            </button>
+          )}
+
         </CardTitle>
 
-        {role !== "student" && visible.length > 1 && (
-          <div className="mc-report-toolbar">
-            <label>
-              Select Student
-              <select
-                value={selectedId}
-                onChange={(event) => {
-                  const nextStudent = visible.find(
-                    (student) => safeId(student) === event.target.value
-                  );
-                  setSelectedId(event.target.value);
-                  setDraft(reportDraft(nextStudent));
-                }}
-              >
-                {visible.map((student) => (
-                  <option key={safeId(student)} value={safeId(student)}>
-                    {student.name || "Unnamed Student"} • {student.usn || "No USN"}
-                  </option>
-                ))}
-              </select>
-            </label>
+
+        {editable && (
+          <div className="mc-readonly-banner">
+
+            <span>
+              ✎
+            </span>
+
+            <div>
+              <b>
+                Mentor / HOD editing enabled
+              </b>
+
+              <small>
+                Add subjects, rename subjects, enter marks and remove subjects.
+              </small>
+            </div>
+
           </div>
         )}
 
-        <div className="mc-report-identity-grid editable-identity">
-          <label>
-            <span>Student</span>
-            <input value={draft.name} onChange={(event) => updateDraft("name", event.target.value)} placeholder="Enter student name" />
-          </label>
-          <label>
-            <span>USN</span>
-            <input value={draft.usn} onChange={(event) => updateDraft("usn", event.target.value.toUpperCase())} placeholder="Enter USN" />
-          </label>
-          <label>
-            <span>Department</span>
-            <input value={draft.dept} onChange={(event) => updateDraft("dept", event.target.value)} placeholder="Enter department" />
-          </label>
-          <label>
-            <span>Year / Semester</span>
-            <input value={draft.year} onChange={(event) => updateDraft("year", event.target.value)} placeholder="Enter year / semester" />
-          </label>
-          <label>
-            <span>Mentor</span>
-            <input value={draft.mentor} onChange={(event) => updateDraft("mentor", event.target.value)} placeholder="Enter mentor name" />
-          </label>
-        </div>
 
-        <ReportSection title="PERFORMANCE REPORT">
-          <div className="mc-table-wrap mc-report-table-wrap">
-            <table className="mc-digital-report-table editable performance-report-table">
-              <thead>
-                <tr>
-                  <th>Sl. No.</th>
-                  <th>Course Code</th>
-                  <th>Course Name</th>
-                  <th>CIE I</th>
-                  <th>CIE II</th>
-                  <th>CIE III</th>
-                  <th>Before RV SEE</th>
-                  <th>After RV SEE</th>
-                  <th>Final</th>
-                  <th>SET</th>
-                  <th>Total (100)</th>
-                  <th>Grade</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {draft.subjects.map((subject, index) => {
-                  const calculatedSubjectTotal = subjectCalculatedTotal(subject);
-                  const shownTotal = subject.total === "" || subject.total === undefined
-                    ? calculatedSubjectTotal
-                    : subject.total;
-                  const shownGrade = subject.grade || gradeFromTotal(shownTotal);
+        {visible.map(
+          (student) => (
+            <div
+              className="mc-academic-student-block"
+              key={safeId(
+                student
+              )}
+            >
 
-                  return (
-                    <tr key={safeId(subject) || `new-${index}`}>
-                      <td>{index + 1}</td>
-                      <td>
-                        <input
-                          className="mc-report-input"
-                          value={subject.code || ""}
-                          onChange={(event) => updateSubjectDraft(index, "code", event.target.value)}
-                          placeholder="Enter code"
-                        />
-                      </td>
-                      <td>
-                        <input
-                          className="mc-report-input subject"
-                          value={subject.subject || ""}
-                          onChange={(event) => updateSubjectDraft(index, "subject", event.target.value)}
-                          placeholder="Enter course name"
-                        />
-                      </td>
-                      {["cie1", "cie2", "cie3", "beforeRvSee", "afterRvSee", "final", "set"].map((key) => (
-                        <td key={key}>
-                          <input
-                            className="mc-report-input number"
-                            type="number"
-                            min="0"
-                            max="100"
-                            value={subject[key] ?? ""}
-                            onChange={(event) => updateSubjectDraft(index, key, event.target.value)}
-                            placeholder="0"
-                          />
-                        </td>
-                      ))}
-                      <td>
-                        <input
-                          className="mc-report-input number"
-                          type="number"
-                          min="0"
-                          max="100"
-                          value={subject.total ?? ""}
-                          onChange={(event) => updateSubjectDraft(index, "total", event.target.value)}
-                          placeholder={calculatedSubjectTotal || "0"}
-                        />
-                      </td>
-                      <td>
-                        <select
-                          className="mc-report-input grade-select"
-                          value={subject.grade || ""}
-                          onChange={(event) => updateSubjectDraft(index, "grade", event.target.value)}
-                        >
-                          <option value="">Select</option>
-                          <option value="Pass">Pass</option>
-                          <option value="Fail">Fail</option>
-                        </select>
-                        {!subject.grade && shownGrade && (
-                          <small className="mc-inline-hint">Suggested: {shownGrade}</small>
-                        )}
-                      </td>
-                      <td>
-                        <button type="button" className="mc-danger-link" onClick={() => removeSubjectDraft(index)}>Remove</button>
-                      </td>
-                    </tr>
-                  );
-                })}
-                {!draft.subjects.length && (
-                  <tr><td colSpan="13" className="mc-empty-cell">No subjects added yet. Click “+ Add Subject” to enter course code, course name and marks details.</td></tr>
+              <div className="mc-academic-student-head">
+
+                <div>
+
+                  <span>
+                    Student
+                  </span>
+
+                  <h3>
+                    {student.name}
+                  </h3>
+
+                  <small>
+                    USN:{" "}
+                    {student.usn ||
+                      "—"}{" "}
+                    •{" "}
+                    {student.dept ||
+                      "—"}{" "}
+                    •{" "}
+                    {student.year ||
+                      "—"}
+                  </small>
+
+                </div>
+
+                {editable && (
+                  <button
+                    className="mc-outline-btn"
+                    onClick={() =>
+                      addSubject(
+                        safeId(
+                          student
+                        )
+                      )
+                    }
+                    disabled={saving}
+                  >
+                    + Add Subject
+                  </button>
                 )}
-              </tbody>
-            </table>
-          </div>
 
-          <button className="mc-outline-btn mc-add-row" onClick={addSubjectDraft}>+ Add Subject</button>
+              </div>
 
-          <div className="mc-report-inline-fields">
-            <label>SGPA<input type="number" min="0" max="10" step="0.01" value={draft.sgpa} onChange={(event) => updateDraft("sgpa", event.target.value)} placeholder="Enter SGPA" /></label>
-            <label>CGPA<input type="number" min="0" max="10" step="0.01" value={draft.cgpa} onChange={(event) => updateDraft("cgpa", event.target.value)} placeholder="Enter CGPA" /></label>
-            <label>
-              Online Courses Attended
-              <select value={draft.onlineCoursesAttended ? "yes" : "no"} onChange={(event) => updateDraft("onlineCoursesAttended", event.target.value === "yes")}>
-                <option value="no">No</option>
-                <option value="yes">Yes</option>
-              </select>
-            </label>
-          </div>
 
-          <div className="mc-report-total-row">
-            <label>
-              Total Marks
-              <input type="number" min="0" value={draft.totalMarks ?? ""} onChange={(event) => updateDraft("totalMarks", event.target.value)} placeholder="Enter total marks" />
-            </label>
-            <label>
-              Percentage (%)
-              <input type="number" min="0" max="100" step="0.01" value={draft.percentage ?? ""} onChange={(event) => updateDraft("percentage", event.target.value)} placeholder="Enter percentage" />
-            </label>
-          </div>
-        </ReportSection>
+              <div className="mc-table-wrap">
 
-        <ReportSection title="BACKLOG INFORMATION">
-          <div className="mc-table-wrap mc-report-table-wrap">
-            <table className="mc-digital-report-table editable">
-              <thead><tr><th>Sl. No.</th><th>Course Name</th><th>Year of Pass</th><th>Ext. Marks</th><th>Remarks</th><th>Action</th></tr></thead>
-              <tbody>
-                {draft.backlogRecords.map((row, index) => (
-                  <tr key={index}>
-                    <td>{index + 1}</td>
-                    <td><input className="mc-report-input" value={row.courseName || ""} onChange={(event) => updateBacklog(index, "courseName", event.target.value)} placeholder="Course name" /></td>
-                    <td><input className="mc-report-input" value={row.yearOfPass || ""} onChange={(event) => updateBacklog(index, "yearOfPass", event.target.value)} placeholder="Year" /></td>
-                    <td><input className="mc-report-input number" type="number" min="0" max="100" value={row.extMarks || ""} onChange={(event) => updateBacklog(index, "extMarks", event.target.value)} placeholder="Marks" /></td>
-                    <td><input className="mc-report-input" value={row.remarks || ""} onChange={(event) => updateBacklog(index, "remarks", event.target.value)} placeholder="Remarks" /></td>
-                    <td><button type="button" className="mc-danger-link" onClick={() => clearBacklog(index)}>Remove</button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <button type="button" className="mc-outline-btn mc-add-row" onClick={addBacklogDraft}>+ Add Backlog</button>
-        </ReportSection>
+                <table className="marks">
 
-        <ReportSection title="MENTORSHIP REPORT">
-          <div className="mc-table-wrap mc-report-table-wrap">
-            <table className="mc-digital-report-table editable">
-              <thead>
-                <tr><th>Sl. No.</th><th>Date</th><th>Code</th><th>Mentoring Details</th><th>Action Taken</th><th>Student Sign.</th><th>Mentor Sign.</th></tr>
-              </thead>
-              <tbody>
-                {draft.mentorshipRecords.map((row, index) => (
-                  <tr key={index}>
-                    <td>{index + 1}</td>
-                    <td><input className="mc-report-input" type="date" value={row.date || ""} onChange={(event) => updateMentorship(index, "date", event.target.value)} /></td>
-                    <td><input className="mc-report-input" value={row.code || ""} onChange={(event) => updateMentorship(index, "code", event.target.value)} placeholder="CIE-1" /></td>
-                    <td><textarea className="mc-report-input report-textarea" value={row.details || ""} onChange={(event) => updateMentorship(index, "details", event.target.value)} placeholder="Enter mentoring details" /></td>
-                    <td><textarea className="mc-report-input report-textarea" value={row.actionTaken || ""} onChange={(event) => updateMentorship(index, "actionTaken", event.target.value)} placeholder="Enter action taken" /></td>
-                    <td><label className="mc-check"><input type="checkbox" checked={Boolean(row.studentSigned)} onChange={(event) => updateMentorship(index, "studentSigned", event.target.checked)} /> Signed</label></td>
-                    <td><label className="mc-check"><input type="checkbox" checked={Boolean(row.mentorSigned)} onChange={(event) => updateMentorship(index, "mentorSigned", event.target.checked)} /> Signed</label></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </ReportSection>
+                  <thead>
+                    <tr>
+                      <th>
+                        Sl.
+                      </th>
+
+                      <th>
+                        Subject
+                      </th>
+
+                      <th>
+                        CIE I
+                      </th>
+
+                      <th>
+                        CIE II
+                      </th>
+
+                      <th>
+                        CIE III
+                      </th>
+
+                      <th>
+                        Final
+                      </th>
+
+                      <th>
+                        SET
+                      </th>
+
+                      <th>
+                        Total
+                      </th>
+
+                      <th>
+                        Grade
+                      </th>
+
+                      {editable && (
+                        <th>
+                          Action
+                        </th>
+                      )}
+                    </tr>
+                  </thead>
+
+
+                  <tbody>
+
+                    {subjectRecords(
+                      student
+                    ).map(
+                      (
+                        subject,
+                        index
+                      ) => (
+                        <tr
+                          key={
+                            safeId(
+                              subject
+                            ) ||
+                            index
+                          }
+                        >
+
+                          <td>
+                            {index + 1}
+                          </td>
+
+
+                          <td>
+
+                            {editable ? (
+                              <input
+                                className="mc-cell-input subject-input"
+                                value={
+                                  subject.subject ||
+                                  ""
+                                }
+                                onChange={(
+                                  event
+                                ) =>
+                                  updateSubject(
+                                    safeId(
+                                      student
+                                    ),
+                                    safeId(
+                                      subject
+                                    ),
+                                    "subject",
+                                    event
+                                      .target
+                                      .value
+                                  )
+                                }
+                              />
+                            ) : (
+                              <b>
+                                {
+                                  subject.subject
+                                }
+                              </b>
+                            )}
+
+                          </td>
+
+
+                          {[
+                            "cie1",
+                            "cie2",
+                            "cie3",
+                            "final",
+                            "set",
+                          ].map(
+                            (key) => (
+                              <td
+                                key={
+                                  key
+                                }
+                              >
+
+                                {editable ? (
+                                  <input
+                                    className="mc-cell-input mark-input"
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    value={
+                                      subject[
+                                        key
+                                      ] ??
+                                      0
+                                    }
+                                    onChange={(
+                                      event
+                                    ) =>
+                                      updateSubject(
+                                        safeId(
+                                          student
+                                        ),
+                                        safeId(
+                                          subject
+                                        ),
+                                        key,
+                                        event
+                                          .target
+                                          .value
+                                      )
+                                    }
+                                  />
+                                ) : (
+                                  subject[
+                                    key
+                                  ] ??
+                                  0
+                                )}
+
+                              </td>
+                            )
+                          )}
+
+
+                          <td>
+                            <strong>
+                              {
+                                subject.total ??
+                                0
+                              }
+                            </strong>
+                          </td>
+
+
+                          <td>
+                            <span className="mc-grade">
+                              {
+                                subject.grade ||
+                                "—"
+                              }
+                            </span>
+                          </td>
+
+
+                          {editable && (
+                            <td>
+                              <button
+                                className="mc-danger-link"
+                                onClick={() =>
+                                  removeSubject(
+                                    safeId(
+                                      student
+                                    ),
+                                    safeId(
+                                      subject
+                                    )
+                                  )
+                                }
+                              >
+                                Remove
+                              </button>
+                            </td>
+                          )}
+
+                        </tr>
+                      )
+                    )}
+
+                  </tbody>
+
+                </table>
+
+              </div>
+
+            </div>
+          )
+        )}
 
       </section>
     );
@@ -3406,282 +3400,121 @@ emergencyContact: item.emergencyContact || "",
   ======================================================= */
 
   function Reports() {
-    const visible = role === "student"
-      ? data.students.filter(
-          (student) =>
-            (student.usn && student.usn === data.profiles?.student?.usn) ||
-            (student.name && student.name === data.profiles?.student?.name)
-        )
-      : filteredStudents;
-
-    const [selectedId, setSelectedId] = useState(safeId(visible[0]));
-    const selectedStudent =
-      visible.find((student) => safeId(student) === selectedId) || visible[0] || null;
-    const [draft, setDraft] = useState(() => reportDraft(selectedStudent));
-    const [achievement, setAchievement] = useState({
-      title: "",
-      category: "",
-      date: "",
-      description: "",
-      file: null,
-    });
-    const [uploading, setUploading] = useState(false);
-    const [mentorDocuments, setMentorDocuments] = useState([]);
-
-    useEffect(() => {
-      if (!visible.some((student) => safeId(student) === selectedId)) {
-        setSelectedId(safeId(visible[0]));
-      }
-    }, [visible.length, selectedId, visible[0]?.id]);
-
-    useEffect(() => {
-      const current = visible.find((student) => safeId(student) === selectedId) || visible[0] || null;
-      setDraft(reportDraft(current));
-    }, [selectedId, visible.length, visible[0]?.id]);
-
-    useEffect(() => {
-      let cancelled = false;
-
-      const loadMentorDocuments = async () => {
-        if (role !== "mentor" || !selectedStudent) {
-          setMentorDocuments([]);
-          return;
-        }
-
-        setMentorDocuments([]);
-
-        try {
-          const response = await api.students.getAchievements(safeId(selectedStudent));
-          if (!cancelled) {
-            setMentorDocuments(Array.isArray(response?.achievements) ? response.achievements : []);
-          }
-        } catch (error) {
-          console.error("Unable to load student documents for mentor:", error);
-          if (!cancelled) {
-            setMentorDocuments(Array.isArray(selectedStudent.achievements) ? selectedStudent.achievements : []);
-          }
-        }
-      };
-
-      loadMentorDocuments();
-
-      return () => {
-        cancelled = true;
-      };
-    }, [role, selectedId, selectedStudent?.id]);
-
-    const updateDraft = (key, value) => {
-      setDraft((current) => ({ ...current, [key]: value }));
-    };
-
-    const saveReportCentre = async () => {
-      if (!selectedStudent) return;
-      await savePerformanceReport(safeId(selectedStudent), draft);
-    };
-
-    const upload = async () => {
-      if (!selectedStudent) return;
-      if (!achievement.title.trim()) {
-        notify("Enter an achievement title");
-        return;
-      }
-      if (!achievement.file) {
-        notify("Select a certificate or document");
-        return;
-      }
-      if (achievement.file.size > 3 * 1024 * 1024) {
-        notify("Document must be 3 MB or smaller");
-        return;
-      }
-
-      try {
-        setUploading(true);
-        const fileData = await fileToDataUrl(achievement.file);
-        await api.students.uploadAchievement(safeId(selectedStudent), {
-          title: achievement.title.trim(),
-          category: achievement.category.trim(),
-          date: achievement.date,
-          description: achievement.description.trim(),
-          fileName: achievement.file.name,
-          mimeType: achievement.file.type,
-          fileData,
-        });
-        await refreshDashboard();
-        setAchievement({ title: "", category: "", date: "", description: "", file: null });
-        const input = document.getElementById("achievement-document-upload");
-        if (input) input.value = "";
-        notify("Achievement and document uploaded successfully");
-      } catch (error) {
-        console.error(error);
-        notify(error.message || "Unable to upload achievement");
-      } finally {
-        setUploading(false);
-      }
-    };
-
-    const removeAchievement = async (achievementId) => {
-      if (!selectedStudent || !achievementId) return;
-      if (!window.confirm("Remove this achievement and its document?")) return;
-      try {
-        setUploading(true);
-        await api.students.deleteAchievement(safeId(selectedStudent), achievementId);
-        await refreshDashboard();
-        notify("Achievement removed");
-      } catch (error) {
-        console.error(error);
-        notify(error.message || "Unable to remove achievement");
-      } finally {
-        setUploading(false);
-      }
-    };
-
-    if (!selectedStudent) {
-      return (
-        <section className="mc-card mc-digital-report">
-          <CardTitle title="Reports Centre" />
-          <div className="mc-achievement-empty"><h4>No student record available.</h4></div>
-        </section>
-      );
-    }
-
-    // Mentor Reports Centre is intentionally document-only. Student uploads
-    // are read from the same student record after refresh and are shown here.
-    if (role === "mentor") {
-      return (
-        <section className="mc-card mc-digital-report mc-mentor-reports-centre">
-          <CardTitle title="Reports Centre" />
-
-          {visible.length > 1 && (
-            <div className="mc-report-toolbar">
-              <label>
-                Select Student
-                <select
-                  value={selectedId}
-                  onChange={(event) => setSelectedId(event.target.value)}
-                >
-                  {visible.map((student) => (
-                    <option key={safeId(student)} value={safeId(student)}>
-                      {student.name || "Unnamed Student"} • {student.usn || "No USN"}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-          )}
-
-          <div className="mc-report-documents-only">
-            <div className="mc-report-documents-header">
-              <div>
-                <h3>Uploaded Student Documents</h3>
-                <p>Certificates and documents uploaded by the selected student are shown here.</p>
-              </div>
-              <span className="mc-pill">{mentorDocuments.length} document{mentorDocuments.length === 1 ? "" : "s"}</span>
-            </div>
-
-            <AchievementList
-              achievements={mentorDocuments}
-              readOnly={true}
-            />
-
-            {!mentorDocuments.length && (
-              <div className="mc-achievement-empty">
-                <h4>No documents uploaded yet.</h4>
-                <p>When the student uploads a certificate or document from their Reports Centre, it will appear here automatically.</p>
-              </div>
-            )}
-          </div>
-        </section>
-      );
-    }
-
     return (
-      <>
-        <section className="mc-card mc-digital-report">
-          <CardTitle
-            title="Reports Centre"
-            sub="Enter and edit student information and manage supporting documents."
-          >
-            <div className="mc-inline-actions">
-              <button className="mc-outline-btn" onClick={() => window.print()}>Print</button>
-              <button className="mc-primary" onClick={saveReportCentre} disabled={saving}>
-                {saving ? "Saving..." : "Save Report Centre"}
-              </button>
-            </div>
-          </CardTitle>
+      <section className="mc-card">
 
-          {role !== "student" && visible.length > 1 && (
-            <div className="mc-report-toolbar">
-              <label>
-                Select Student
-                <select
-                  value={selectedId}
-                  onChange={(event) => setSelectedId(event.target.value)}
-                >
-                  {visible.map((student) => (
-                    <option key={safeId(student)} value={safeId(student)}>
-                      {student.name || "Unnamed Student"} • {student.usn || "No USN"}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
+        <CardTitle
+          title="Reports Centre"
+          sub="Generate, preview and export academic reports"
+        >
+
+          <div className="mc-inline-actions">
+
+            <button
+              className="mc-outline-btn"
+              onClick={() =>
+                window.print()
+              }
+            >
+              Print
+            </button>
+
+            <button
+              className="mc-primary"
+              onClick={
+                exportCurrent
+              }
+            >
+              Export CSV
+            </button>
+
+          </div>
+
+        </CardTitle>
+
+
+        <div className="mc-report-cards">
+
+          {data.reports.map(
+            (report) => (
+              <div
+                className="mc-report-card"
+                key={safeId(
+                  report
+                )}
+              >
+
+                <span>
+                  {
+                    report.category
+                  }
+                </span>
+
+                <h3>
+                  {
+                    report.title
+                  }
+                </h3>
+
+                <p>
+                  Owner:{" "}
+                  {
+                    report.owner
+                  }{" "}
+                  •{" "}
+                  {
+                    report.date
+                  }
+                </p>
+
+                <b>
+                  {
+                    report.status
+                  }
+                </b>
+
+                <div>
+
+                  <button
+                    className="mc-link"
+                    onClick={() =>
+                      notify(
+                        `${report.title} preview opened`
+                      )
+                    }
+                  >
+                    Preview
+                  </button>
+
+                  <button
+                    className="mc-link"
+                    onClick={() =>
+                      download(
+                        `${String(
+                          report.title ||
+                            "report"
+                        ).replaceAll(
+                          " ",
+                          "-"
+                        )}.csv`,
+                        csv(
+                          data.students
+                        )
+                      )
+                    }
+                  >
+                    Download
+                  </button>
+
+                </div>
+
+              </div>
+            )
           )}
 
-          <ReportSection title="STUDENT INFORMATION" description="All student details below can be entered or edited.">
-            <div className="mc-report-identity-grid editable-identity">
-              <label>
-                <span>Student</span>
-                <input value={draft.name} onChange={(event) => updateDraft("name", event.target.value)} placeholder="Enter student name" />
-              </label>
-              <label>
-                <span>USN</span>
-                <input value={draft.usn} onChange={(event) => updateDraft("usn", event.target.value.toUpperCase())} placeholder="Enter USN" />
-              </label>
-              <label>
-                <span>Department</span>
-                <input value={draft.dept} onChange={(event) => updateDraft("dept", event.target.value)} placeholder="Enter department" />
-              </label>
-              <label>
-                <span>Year / Semester</span>
-                <input value={draft.year} onChange={(event) => updateDraft("year", event.target.value)} placeholder="Enter year / semester" />
-              </label>
-              <label>
-                <span>Mentor</span>
-                <input value={draft.mentor} onChange={(event) => updateDraft("mentor", event.target.value)} placeholder="Enter mentor name" />
-              </label>
-            </div>
-          </ReportSection>
+        </div>
 
-          <ReportSection title="REPORT DOCUMENTS" description="Upload certificates, achievements and supporting academic documents.">
-            <div className="mc-achievement-form">
-              <div className="mc-achievement-form-grid">
-                <label>Achievement / Certification Title<input value={achievement.title} onChange={(event) => setAchievement((current) => ({ ...current, title: event.target.value }))} placeholder="e.g. Best Project Award" /></label>
-                <label>Category<input value={achievement.category} onChange={(event) => setAchievement((current) => ({ ...current, category: event.target.value }))} placeholder="Award / Certification / Co-curricular" /></label>
-                <label>Date<input type="date" value={achievement.date} onChange={(event) => setAchievement((current) => ({ ...current, date: event.target.value }))} /></label>
-                <label>Certificate / Document<input id="achievement-document-upload" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,image/*" onChange={(event) => setAchievement((current) => ({ ...current, file: event.target.files?.[0] || null }))} /></label>
-                <label className="full">Description<textarea value={achievement.description} onChange={(event) => setAchievement((current) => ({ ...current, description: event.target.value }))} placeholder="Brief description of the achievement" /></label>
-              </div>
-              <div className="mc-achievement-form-footer">
-                <small>Allowed: PDF, Word, Excel, PowerPoint, TXT, JPG, PNG, WEBP • Maximum 3 MB</small>
-                <button className="mc-primary" onClick={upload} disabled={uploading}>{uploading ? "Uploading..." : "Upload Achievement"}</button>
-              </div>
-            </div>
-
-            <AchievementList
-              achievements={selectedStudent.achievements || []}
-              onDelete={removeAchievement}
-              readOnly={false}
-            />
-          </ReportSection>
-
-        </section>
-
-        {(role === "mentor" || role === "hod") && (
-          <div className="mc-report-embedded-performance">
-            <Performance />
-          </div>
-        )}
-      </>
+      </section>
     );
   }
 
@@ -4181,10 +4014,6 @@ emergencyContact: item.emergencyContact || "",
       return <Overview />;
     }
 
-    if (tab === "messages") {
-    return <Messages role={role} />;
-  }
-
     if (
       tab ===
       "academic-records"
@@ -4414,6 +4243,14 @@ emergencyContact: item.emergencyContact || "",
         )}
 
 
+        {/* =====================
+            FOOTER
+        ====================== */}
+
+        <footer className="mc-footer">
+          MentorConnect • Academic Mentoring & Performance Management
+        </footer>
+
       </main>
 
 
@@ -4501,9 +4338,6 @@ emergencyContact: item.emergencyContact || "",
           saveTask={
             saveTask
           }
-          mentors={
-         data.mentors
-       }
           saving={saving}
         />
       )}
@@ -4515,57 +4349,6 @@ emergencyContact: item.emergencyContact || "",
 /* =========================================================
    CARD TITLE
 ========================================================= */
-
-function ReportSection({ title, description, children }) {
-  return (
-    <section className="mc-report-section">
-      <div className="mc-report-section-head">
-        <div>
-          <h3>{title}</h3>
-          {description && <p>{description}</p>}
-        </div>
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function AchievementList({ achievements = [], onDelete, readOnly = false }) {
-  if (!achievements.length) {
-    return null;
-  }
-
-  return (
-    <div className="mc-achievement-list">
-      {achievements.map((item, index) => {
-        const id = safeId(item) || index;
-        const url = assetUrl(item.filePath);
-        return (
-          <article className="mc-achievement-item" key={id}>
-            <div className="mc-achievement-main">
-              <div className="mc-achievement-icon">★</div>
-              <div>
-                <h4>{item.title || "Untitled achievement"}</h4>
-                <div className="mc-achievement-meta">
-                  <span>{item.category || "Achievement"}</span>
-                  <span>{item.date || "Date not set"}</span>
-                  {item.fileName && <span>{item.fileName}</span>}
-                </div>
-                {item.description && <p>{item.description}</p>}
-              </div>
-            </div>
-            {url && (
-              <div className="mc-achievement-actions">
-                <a className="mc-outline-btn" href={url} target="_blank" rel="noreferrer">Open Document</a>
-                {!readOnly && onDelete && <button className="mc-danger-link" onClick={() => onDelete(id)}>Remove</button>}
-              </div>
-            )}
-          </article>
-        );
-      })}
-    </div>
-  );
-}
 
 function CardTitle({
   title,
@@ -4596,6 +4379,7 @@ function CardTitle({
 /* =========================================================
    MODAL
 ========================================================= */
+
 function Modal({
   modal,
   close,
@@ -4604,9 +4388,7 @@ function Modal({
   saveSession,
   saveTask,
   saving,
-  mentors = [],
 }) {
-
   const [item, setItem] =
     useState(
       modal.item || {}
@@ -4696,35 +4478,6 @@ function Modal({
       "text",
     ],
 
-[
-  "parentName",
-  "Parent / Guardian Name",
-  "text",
-],
-
-[
-  "parentRelation",
-  "Relationship",
-  "text",
-],
-
-[
-  "parentPhone",
-  "Parent Phone",
-  "tel",
-],
-
-[
-  "parentEmail",
-  "Parent Email",
-  "email",
-],
-
-[
-  "emergencyContact",
-  "Emergency Contact",
-  "tel",
-],
     [
       "dept",
       "Department",
@@ -4737,11 +4490,11 @@ function Modal({
       "text",
     ],
 
- [
-  "mentor",
-  "Mentor",
-  "mentor-select",
-],
+    [
+      "mentor",
+      "Mentor",
+      "text",
+    ],
 
 
     [
@@ -4967,86 +4720,50 @@ function Modal({
 
         <div className="mc-form-grid">
 
-         
-         {fields.map(
-  ([
-    key,
-    label,
-    type,
-  ]) => (
-    <label
-      key={key}
-    >
-
-      {label}
-
-      {type === "mentor-select" ? (
-        <select
-          value={item[key] ?? ""}
-          onChange={(event) =>
-            set(
+          {fields.map(
+            ([
               key,
-              event.target.value
-            )
-          }
-          required={
-            key === "mentor"
-          }
-        >
-          <option value="">
-            Select Mentor
-          </option>
-
-          {mentors
-  .filter(
-    (mentor) =>
-      mentor.status ===
-      "Active"
-  )
-  .map((mentor) => (
-              <option
-                key={
-                  safeId(mentor) ||
-                  mentor.name
-                }
-                value={
-                  mentor.name || ""
-                }
+              label,
+              type,
+            ]) => (
+              <label
+                key={key}
               >
-                {mentor.name}
-              </option>
-            ))}
-        </select>
-      ) : (
-        <input
-          type={type}
-          value={
-            item[key] ??
-            ""
-          }
-          onChange={(event) =>
-            set(
-              key,
-              event.target.value
-            )
-          }
-          required={
-            [
-              "name",
-              "usn",
-              "title",
-              "date",
-              "course",
-            ].includes(
-              key
-            )
-          }
-        />
-      )}
 
-    </label>
-  )
-)}
+                {label}
+
+                <input
+                  type={type}
+                  value={
+                    item[key] ??
+                    ""
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    set(
+                      key,
+                      event
+                        .target
+                        .value
+                    )
+                  }
+                  required={
+                    [
+                      "name",
+                      "usn",
+                      "title",
+                      "date",
+                      "course",
+                    ].includes(
+                      key
+                    )
+                  }
+                />
+
+              </label>
+            )
+          )}
 
 
           {/* =====================

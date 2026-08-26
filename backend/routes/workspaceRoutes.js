@@ -1,7 +1,4 @@
 import express from "express";
-import fs from "fs/promises";
-import path from "path";
-import { randomUUID } from "crypto";
 import Student from "../models/Student.js";
 import Mentor from "../models/Mentor.js";
 import Session from "../models/Session.js";
@@ -18,7 +15,7 @@ router.use(protect);
 const getId = (req) => req.params.id;
 
 const roleCanManageAcademic =
-  allowRoles("mentor", "hod");
+  allowRoles("mentor", "hod", "principal");
 
 
 /*
@@ -28,132 +25,12 @@ const roleCanManageAcademic =
 */
 
 function gradeFromTotal(total) {
-  if (total <= 0) return "";
-  return total >= 40 ? "Pass" : "Fail";
-}
-
-function normalizeSubjects(subjects = []) {
-  return subjects.map((subject) => {
-    const cie1 = Number(subject?.cie1 || 0);
-    const cie2 = Number(subject?.cie2 || 0);
-    const cie3 = Number(subject?.cie3 || 0);
-    const beforeRvSee = Number(subject?.beforeRvSee || 0);
-    const afterRvSee = Number(subject?.afterRvSee || 0);
-    const finalMark = Number(subject?.final || 0);
-    const set = Number(subject?.set || 0);
-
-    const calculatedTotal = Math.round(
-      (cie1 + cie2 + cie3 + finalMark + set) / 5
-    );
-
-    const enteredTotal = Number(subject?.total);
-    const total = Number.isFinite(enteredTotal)
-      ? enteredTotal
-      : calculatedTotal;
-
-    const enteredGrade = String(subject?.grade || "").trim();
-    const normalizedGrade = ["Pass", "Fail"].includes(enteredGrade)
-      ? enteredGrade
-      : gradeFromTotal(total);
-
-    return {
-      _id: subject?._id,
-      code: String(subject?.code || "").trim(),
-      subject: String(subject?.subject || "Subject").trim(),
-      cie1,
-      cie2,
-      cie3,
-      beforeRvSee,
-      afterRvSee,
-      final: finalMark,
-      set,
-      total,
-      grade: normalizedGrade,
-    };
-  });
-}
-
-function normalizeMentorship(records = []) {
-  return records.slice(0, 6).map((record) => ({
-    date: String(record?.date || ""),
-    code: String(record?.code || ""),
-    details: String(record?.details || ""),
-    actionTaken: String(record?.actionTaken || ""),
-    studentSigned: Boolean(record?.studentSigned),
-    mentorSigned: Boolean(record?.mentorSigned),
-  }));
-}
-
-function normalizeBacklogs(records = []) {
-  return records.slice(0, 20).map((record) => ({
-    courseName: String(record?.courseName || ""),
-    yearOfPass: String(record?.yearOfPass || ""),
-    extMarks: String(record?.extMarks || ""),
-    remarks: String(record?.remarks || ""),
-  }));
-}
-
-const MAX_ACHIEVEMENT_FILE_BYTES = 3 * 1024 * 1024;
-const achievementMimeTypes = new Set([
-  "application/pdf",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/vnd.ms-excel",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  "application/vnd.ms-powerpoint",
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  "text/plain",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-]);
-
-function safeAchievementFileName(name = "document") {
-  return path.basename(String(name)).replace(/[^a-zA-Z0-9._-]/g, "_");
-}
-
-async function canAccessStudent(req, student) {
-  if (!student) return false;
-
-  if (req.user.role === "mentor" || req.user.role === "hod") {
-    return true;
-  }
-
-  if (req.user.role === "student") {
-    if (student.user && String(student.user) === String(req.user._id)) {
-      return true;
-    }
-    if (req.user.usn && student.usn && req.user.usn === student.usn) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-async function editAcademicRecord(req, res, next) {
-  if (req.user.role === "mentor" || req.user.role === "hod") {
-    return next();
-  }
-
-  if (req.user.role !== "student") {
-    return res.status(403).json({ message: "You do not have permission to edit academic records" });
-  }
-
-  const student = await Student.findById(getId(req));
-  if (!student) {
-    return res.status(404).json({ message: "Student not found" });
-  }
-
-  const ownsRecord =
-    (student.user && String(student.user) === String(req.user._id)) ||
-    (req.user.usn && student.usn && req.user.usn === student.usn);
-
-  if (!ownsRecord) {
-    return res.status(403).json({ message: "You can edit only your own academic record" });
-  }
-
-  return next();
+  if (total >= 90) return "A+";
+  if (total >= 80) return "A";
+  if (total >= 70) return "B+";
+  if (total >= 60) return "B";
+  if (total >= 50) return "C";
+  return "F";
 }
 
 
@@ -185,13 +62,6 @@ function cleanStudentPayload(body = {}) {
     "subjects",
     "marksUpdatedBy",
     "marksUpdatedAt",
-    "sgpa",
-    "cgpa",
-    "onlineCoursesAttended",
-    "totalMarks",
-    "percentage",
-    "mentorshipRecords",
-    "backlogRecords",
   ];
 
   const payload = {};
@@ -302,29 +172,27 @@ async function buildProfiles(
         },
       })
         .select(
-  "_id name email phone department designation semester usn"
-)
+          "name email phone department designation semester usn"
+        )
         .lean();
 
     if (mentorUsers.length) {
       const mentor =
         mentorUsers[0];
 
-   profiles.mentor = {
-  id: mentor._id.toString(),
-  user: mentor._id.toString(),
-
-  name: mentor.name,
-  email: mentor.email,
-  phone: mentor.phone || "",
-  department: mentor.department || "",
-  designation:
-    mentor.designation ||
-    "Mentor",
-  semester:
-    mentor.semester || "",
-  usn: mentor.usn || "",
-};
+      profiles.mentor = {
+        name: mentor.name,
+        email: mentor.email,
+        phone: mentor.phone || "",
+        department:
+          mentor.department || "",
+        designation:
+          mentor.designation ||
+          "Mentor",
+        semester:
+          mentor.semester || "",
+        usn: mentor.usn || "",
+      };
     }
   }
 
@@ -340,28 +208,27 @@ async function buildProfiles(
       await User.findOne({
         role: "mentor",
       })
-      .select(
-  "_id name email phone department designation semester usn"
-)
+        .select(
+          "name email phone department designation semester usn"
+        )
         .lean();
 
     if (mentorUser) {
       profiles.mentor = {
-  id: mentorUser._id.toString(),
-  user: mentorUser._id.toString(),
-
-  name: mentorUser.name,
-  email: mentorUser.email,
-  phone: mentorUser.phone || "",
-  department: mentorUser.department || "",
-  designation:
-    mentorUser.designation ||
-    "Mentor",
-  semester:
-    mentorUser.semester || "",
-  usn: mentorUser.usn || "",
-};
-   
+        name: mentorUser.name,
+        email: mentorUser.email,
+        phone:
+          mentorUser.phone || "",
+        department:
+          mentorUser.department || "",
+        designation:
+          mentorUser.designation ||
+          "Mentor",
+        semester:
+          mentorUser.semester || "",
+        usn:
+          mentorUser.usn || "",
+      };
     }
   }
 
@@ -386,7 +253,7 @@ async function buildProfiles(
               firstStudent.user
             )
               .select(
-                "_id name email phone department designation semester usn"
+                "name email phone department designation semester usn"
               )
               .lean()
           : null;
@@ -484,39 +351,9 @@ router.get(
       } else if (
         user.role === "mentor"
       ) {
-        // Match students to the signed-in mentor using the mentor name
-        // as well as the linked Mentor profile. This keeps document access
-        // working even when older student records stored a slightly
-        // different mentor label.
-        const mentorProfile =
-          await Mentor.findOne({
-            $or: [
-              { user: user._id },
-              { email: user.email },
-              { name: user.name },
-            ],
-          })
-            .select("_id name email")
-            .lean();
-
-        const mentorNames = [
-          user.name,
-          mentorProfile?.name,
-        ].filter(Boolean);
-
-        const mentorQuery = [
-          { mentor: { $in: mentorNames } },
-        ];
-
-        if (mentorProfile?._id) {
-          mentorQuery.push({ mentorId: mentorProfile._id });
-        }
-
-        // Some existing records use mentorId while newer records use the
-        // mentor name, so support both forms.
         students =
           await Student.find({
-            $or: mentorQuery,
+            mentor: user.name,
           }).lean();
       } else if (
         user.role === "hod"
@@ -1161,286 +998,11 @@ router.put(
 );
 
 
-/*
-|--------------------------------------------------------------------------
-| DIGITAL PERFORMANCE REPORT
-|--------------------------------------------------------------------------
-*/
-
-router.put(
-  "/students/:id/performance-report",
-  editAcademicRecord,
-  async (req, res, next) => {
-    try {
-      const student = await Student.findById(getId(req));
-
-      if (!student) {
-        return res.status(404).json({ message: "Student not found" });
-      }
-
-      const requestedUsn = String(req.body.usn ?? student.usn ?? "").trim().toUpperCase();
-      if (requestedUsn && requestedUsn !== String(student.usn || "").toUpperCase()) {
-        const duplicateUsn = await Student.findOne({
-          usn: requestedUsn,
-          _id: { $ne: student._id },
-        }).lean();
-        if (duplicateUsn) {
-          return res.status(409).json({ message: "USN already belongs to another student" });
-        }
-      }
-
-      const normalizedSubjects = normalizeSubjects(
-        Array.isArray(req.body.subjects) ? req.body.subjects : []
-      );
-
-      const average = normalizedSubjects.length
-        ? Math.round(
-            normalizedSubjects.reduce((sum, item) => sum + item.total, 0) /
-              normalizedSubjects.length
-          )
-        : 0;
-
-      const normalizedBacklogs = normalizeBacklogs(
-        Array.isArray(req.body.backlogRecords)
-          ? req.body.backlogRecords
-          : []
-      );
-
-      const rawTotalMarks = req.body.totalMarks;
-      const enteredTotalMarks =
-        rawTotalMarks === "" || rawTotalMarks === null || rawTotalMarks === undefined
-          ? NaN
-          : Number(rawTotalMarks);
-      const totalMarks = Number.isFinite(enteredTotalMarks)
-        ? enteredTotalMarks
-        : normalizedSubjects.reduce((sum, item) => sum + Number(item.total || 0), 0);
-
-      const rawPercentage = req.body.percentage;
-      const enteredPercentage =
-        rawPercentage === "" || rawPercentage === null || rawPercentage === undefined
-          ? NaN
-          : Number(rawPercentage);
-      const percentage = Number.isFinite(enteredPercentage)
-        ? enteredPercentage
-        : normalizedSubjects.length
-          ? Number(((totalMarks / (normalizedSubjects.length * 100)) * 100).toFixed(2))
-          : 0;
-
-      const updates = {
-        name: String(req.body.name ?? student.name).trim(),
-        usn: requestedUsn,
-        dept: String(req.body.dept ?? student.dept ?? "").trim(),
-        year: String(req.body.year ?? student.year ?? "").trim(),
-        mentor: String(req.body.mentor ?? student.mentor ?? "").trim(),
-        subjects: normalizedSubjects,
-        total: average,
-        totalMarks,
-        percentage,
-        grade: gradeFromTotal(average),
-        backlog: normalizedBacklogs.filter(
-          (record) => record.courseName.trim()
-        ).length,
-        mentorshipRecords: normalizeMentorship(
-          Array.isArray(req.body.mentorshipRecords)
-            ? req.body.mentorshipRecords
-            : []
-        ),
-        backlogRecords: normalizedBacklogs,
-        sgpa: Number(req.body.sgpa || 0),
-        cgpa: Number(req.body.cgpa || 0),
-        onlineCoursesAttended: req.body.onlineCoursesAttended === true || req.body.onlineCoursesAttended === "yes" ? 1 : 0,
-        marksUpdatedBy: req.user.name,
-        marksUpdatedAt: new Date(),
-      };
-
-      const saved = await Student.findByIdAndUpdate(
-        getId(req),
-        { $set: updates },
-        { new: true, runValidators: true }
-      );
-
-      return res.json({
-        ...saved.toObject(),
-        id: saved._id.toString(),
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-);
-
-
-/*
-|--------------------------------------------------------------------------
-| ACHIEVEMENT DOCUMENT UPLOAD
-|--------------------------------------------------------------------------
-*/
-
-router.get(
-  "/students/:id/achievements",
-  async (req, res, next) => {
-    try {
-      const student = await Student.findById(getId(req)).lean();
-
-      if (!(await canAccessStudent(req, student))) {
-        return res.status(403).json({
-          message: "You cannot view this student's documents",
-        });
-      }
-
-      if (!student) {
-        return res.status(404).json({
-          message: "Student not found",
-        });
-      }
-
-      return res.json({
-        studentId: student._id.toString(),
-        achievements: Array.isArray(student.achievements)
-          ? student.achievements.map((item) => ({
-              ...item,
-              id: item._id?.toString(),
-            }))
-          : [],
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-);
-
-
-router.post(
-  "/students/:id/achievements",
-  async (req, res, next) => {
-    try {
-      const student = await Student.findById(getId(req));
-
-      if (!(await canAccessStudent(req, student))) {
-        return res.status(403).json({ message: "You cannot update this student's achievements" });
-      }
-
-      const {
-        title = "",
-        category = "",
-        date = "",
-        description = "",
-        fileName = "",
-        mimeType = "",
-        fileData = "",
-      } = req.body || {};
-
-      if (!String(title).trim()) {
-        return res.status(400).json({ message: "Achievement title is required" });
-      }
-
-      if (!fileData || !String(fileData).includes(",")) {
-        return res.status(400).json({ message: "Certificate or document is required" });
-      }
-
-      if (!achievementMimeTypes.has(String(mimeType))) {
-        return res.status(400).json({ message: "Unsupported document type" });
-      }
-
-      const base64 = String(fileData).split(",", 2)[1];
-      const buffer = Buffer.from(base64, "base64");
-
-      if (!buffer.length) {
-        return res.status(400).json({ message: "Uploaded document is empty" });
-      }
-
-      if (buffer.length > MAX_ACHIEVEMENT_FILE_BYTES) {
-        return res.status(400).json({ message: "Document must be 3 MB or smaller" });
-      }
-
-      const uploadDir = path.join(process.cwd(), "uploads", "achievements");
-      await fs.mkdir(uploadDir, { recursive: true });
-
-      const safeName = safeAchievementFileName(fileName || "document");
-      const storedName = `${Date.now()}-${randomUUID()}-${safeName}`;
-      const destination = path.join(uploadDir, storedName);
-
-      await fs.writeFile(destination, buffer);
-
-      student.achievements.push({
-        title: String(title).trim(),
-        category: String(category).trim(),
-        date: String(date).trim(),
-        description: String(description).trim(),
-        fileName: safeName,
-        filePath: `/uploads/achievements/${storedName}`,
-        mimeType: String(mimeType),
-        fileSize: buffer.length,
-      });
-
-      await student.save();
-
-      const achievement = student.achievements[student.achievements.length - 1];
-
-      return res.status(201).json({
-        ...student.toObject(),
-        id: student._id.toString(),
-        achievement: {
-          ...achievement.toObject(),
-          id: achievement._id.toString(),
-        },
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-);
-
-
-router.delete(
-  "/students/:id/achievements/:achievementId",
-  async (req, res, next) => {
-    try {
-      const student = await Student.findById(getId(req));
-
-      if (!(await canAccessStudent(req, student))) {
-        return res.status(403).json({ message: "You cannot modify this student's achievements" });
-      }
-
-      if (!student) {
-        return res.status(404).json({ message: "Student not found" });
-      }
-
-      const achievement = student.achievements.id(req.params.achievementId);
-
-      if (!achievement) {
-        return res.status(404).json({ message: "Achievement not found" });
-      }
-
-      if (achievement.filePath) {
-        const relative = String(achievement.filePath).replace(/^\/+/, "");
-        const diskPath = path.join(process.cwd(), relative);
-        try {
-          await fs.unlink(diskPath);
-        } catch {
-          // File may already be missing; remove the metadata anyway.
-        }
-      }
-
-      achievement.deleteOne();
-      await student.save();
-
-      return res.json({
-        ...student.toObject(),
-        id: student._id.toString(),
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-);
-
-
 router.delete(
   "/students/:id",
   allowRoles(
     "hod",
-   
+    "principal"
   ),
   async (
     req,
@@ -1482,7 +1044,7 @@ router.delete(
 
 router.put(
   "/students/:id/subjects",
-  editAcademicRecord,
+  roleCanManageAcademic,
   async (
     req,
     res,
@@ -1638,7 +1200,7 @@ router.post(
   "/mentors",
   allowRoles(
     "hod",
-   
+    "principal"
   ),
   async (
     req,
@@ -1680,7 +1242,7 @@ router.put(
   "/mentors/:id",
   allowRoles(
     "hod",
-  
+    "principal"
   ),
   async (
     req,
@@ -1728,7 +1290,7 @@ router.delete(
   "/mentors/:id",
   allowRoles(
     "hod",
-  
+    "principal"
   ),
   async (
     req,
@@ -1773,7 +1335,7 @@ router.post(
   allowRoles(
     "mentor",
     "hod",
-    
+    "principal"
   ),
   async (
     req,
@@ -1832,7 +1394,7 @@ router.put(
   allowRoles(
     "mentor",
     "hod",
-   
+    "principal"
   ),
   async (
     req,
@@ -1891,7 +1453,7 @@ router.delete(
   allowRoles(
     "mentor",
     "hod",
-    
+    "principal"
   ),
   async (
     req,
@@ -2160,7 +1722,7 @@ router.get(
   "/analytics",
   allowRoles(
     "hod",
-    
+    "principal"
   ),
   async (
     req,

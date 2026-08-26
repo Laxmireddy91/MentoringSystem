@@ -1,33 +1,17 @@
 import React, { useState } from "react";
-import {
-  useLocation,
-  useNavigate,
-} from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import api from "../api";
 
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [role, setRole] =
-    useState("student");
+  const [role, setRole] = useState("student");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-  const [email, setEmail] =
-    useState("");
-
-  const [password, setPassword] =
-    useState("");
-
-  const [loading, setLoading] =
-    useState(false);
-
-  const [error, setError] =
-    useState("");
-
-
-  /* =========================================================
-     LOGIN
-  ========================================================= */
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const submit = async (e) => {
     e.preventDefault();
@@ -35,38 +19,35 @@ export default function Login() {
     setError("");
 
     if (!email.trim()) {
-      setError(
-        "Please enter your email."
-      );
+      setError("Please enter your email.");
       return;
     }
 
     if (!password) {
-      setError(
-        "Please enter your password."
-      );
+      setError("Please enter your password.");
       return;
     }
 
     setLoading(true);
 
     try {
-      const response =
-        await api.auth.login({
-          email: email.trim(),
-          password,
-          role,
-        });
+      const response = await api.auth.login({
+        email: email.trim(),
+        password,
+        role,
+      });
 
+      /*
+       * Backend should return:
+       *
+       * {
+       *   success: true,
+       *   token: "...",
+       *   user: {...}
+       * }
+       */
 
-      /* =====================================================
-         CHECK RESPONSE
-      ===================================================== */
-
-      if (
-        !response ||
-        !response.success
-      ) {
+      if (!response || !response.success) {
         throw new Error(
           response?.message ||
             "Login failed."
@@ -85,11 +66,9 @@ export default function Login() {
         );
       }
 
-
-      /* =====================================================
-         SAVE AUTHENTICATION
-      ===================================================== */
-
+      /*
+       * Save authentication information.
+       */
       localStorage.setItem(
         "mentorconnect_token",
         response.token
@@ -97,58 +76,28 @@ export default function Login() {
 
       localStorage.setItem(
         "mentorconnect_user",
-        JSON.stringify(
-          response.user
-        )
+        JSON.stringify(response.user)
       );
 
+      /*
+       * Get the actual role returned by
+       * the backend.
+       *
+       * This is safer than trusting the
+       * role selected on the login form.
+       */
+      const backendRole = String(
+        response.user.role || role
+      )
+        .toLowerCase()
+        .trim();
 
-      /* =====================================================
-         GET BACKEND ROLE
-      ===================================================== */
-
-      const backendRole =
-        String(
-          response.user.role ||
-            role
-        )
-          .toLowerCase()
-          .trim();
-
-
-      /* =====================================================
-         ALLOWED ROLES
-      ===================================================== */
-
-      const allowedRoles = [
-        "student",
-        "mentor",
-        "hod",
-      ];
-
-      if (
-        !allowedRoles.includes(
-          backendRole
-        )
-      ) {
-        localStorage.removeItem(
-          "mentorconnect_token"
-        );
-
-        localStorage.removeItem(
-          "mentorconnect_user"
-        );
-
-        throw new Error(
-          "This account role is not supported."
-        );
-      }
-
-
-      /* =====================================================
-         REDIRECT
-      ===================================================== */
-
+      /*
+       * If the user came from a protected page,
+       * we can optionally send them back there.
+       *
+       * Otherwise go to their dashboard.
+       */
       const requestedPath =
         location.state?.from;
 
@@ -158,21 +107,14 @@ export default function Login() {
           `/${backendRole}`
         )
       ) {
-        navigate(
-          requestedPath,
-          {
-            replace: true,
-          }
-        );
+        navigate(requestedPath, {
+          replace: true,
+        });
       } else {
-        navigate(
-          `/${backendRole}`,
-          {
-            replace: true,
-          }
-        );
+        navigate(`/${backendRole}`, {
+          replace: true,
+        });
       }
-
     } catch (err) {
       console.error(
         "Login error:",
@@ -183,37 +125,24 @@ export default function Login() {
         err?.message ||
           "Unable to login. Please try again."
       );
-
     } finally {
       setLoading(false);
     }
   };
 
-
-  /* =========================================================
-     NAVIGATION
-  ========================================================= */
-
   const goToRegister = () => {
     navigate("/register");
   };
 
-
   const goHome = () => {
     navigate("/");
   };
-
 
   const forgotPassword = () => {
     setError(
       "Please contact your administrator to reset your password."
     );
   };
-
-
-  /* =========================================================
-     UI
-  ========================================================= */
 
   return (
     <div className="auth-page">
@@ -256,26 +185,13 @@ export default function Login() {
         {error && (
           <div
             style={{
-              background:
-                "#ffe7e7",
-
-              color:
-                "#c62828",
-
-              padding:
-                "12px 14px",
-
-              borderRadius:
-                "8px",
-
-              marginBottom:
-                "16px",
-
-              fontSize:
-                "14px",
-
-              lineHeight:
-                "1.4",
+              background: "#ffe7e7",
+              color: "#c62828",
+              padding: "12px 14px",
+              borderRadius: "8px",
+              marginBottom: "16px",
+              fontSize: "14px",
+              lineHeight: "1.4",
             }}
           >
             {error}
@@ -285,15 +201,11 @@ export default function Login() {
 
         {/* Form */}
 
-        <form
-          onSubmit={submit}
-        >
+        <form onSubmit={submit}>
 
           {/* Email */}
 
-          <label
-            htmlFor="login-email"
-          >
+          <label htmlFor="login-email">
             Email
           </label>
 
@@ -302,9 +214,7 @@ export default function Login() {
             type="email"
             value={email}
             onChange={(e) =>
-              setEmail(
-                e.target.value
-              )
+              setEmail(e.target.value)
             }
             placeholder="Enter your email"
             autoComplete="email"
@@ -315,9 +225,7 @@ export default function Login() {
 
           {/* Password */}
 
-          <label
-            htmlFor="login-password"
-          >
+          <label htmlFor="login-password">
             Password
           </label>
 
@@ -326,9 +234,7 @@ export default function Login() {
             type="password"
             value={password}
             onChange={(e) =>
-              setPassword(
-                e.target.value
-              )
+              setPassword(e.target.value)
             }
             placeholder="Enter your password"
             autoComplete="current-password"
@@ -345,35 +251,24 @@ export default function Login() {
               display: "flex",
               justifyContent:
                 "space-between",
-              alignItems:
-                "center",
+              alignItems: "center",
               gap: "10px",
             }}
           >
 
-            <label
-              htmlFor="login-role"
-            >
+            <label htmlFor="login-role">
               Role
             </label>
 
             <button
               type="button"
               className="forgot"
-              onClick={
-                forgotPassword
-              }
+              onClick={forgotPassword}
               disabled={loading}
               style={{
-                background:
-                  "none",
-
-                border:
-                  "none",
-
-                cursor:
-                  "pointer",
-
+                background: "none",
+                border: "none",
+                cursor: "pointer",
                 padding: 0,
               }}
             >
@@ -389,9 +284,7 @@ export default function Login() {
             id="login-role"
             value={role}
             onChange={(e) =>
-              setRole(
-                e.target.value
-              )
+              setRole(e.target.value)
             }
             disabled={loading}
           >
@@ -406,6 +299,10 @@ export default function Login() {
 
             <option value="hod">
               HOD
+            </option>
+
+            <option value="principal">
+              Principal
             </option>
 
           </select>
@@ -434,9 +331,7 @@ export default function Login() {
 
           <button
             type="button"
-            onClick={
-              goToRegister
-            }
+            onClick={goToRegister}
             disabled={loading}
           >
             Register here

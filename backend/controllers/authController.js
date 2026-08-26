@@ -5,7 +5,6 @@ import User from "../models/User.js";
 import Student from "../models/Student.js";
 import Mentor from "../models/Mentor.js";
 
-
 /* =========================================================
    CREATE JWT TOKEN
 ========================================================= */
@@ -22,7 +21,6 @@ const tokenFor = (user) => {
     }
   );
 };
-
 
 /* =========================================================
    SAFE USER OBJECT
@@ -42,7 +40,6 @@ const safeUser = (user) => {
     active: user.active,
   };
 };
-
 
 /* =========================================================
    REGISTER
@@ -68,7 +65,6 @@ export async function register(req, res) {
       semester,
     } = req.body;
 
-
     /* -----------------------------------------------------
        VALIDATION
     ----------------------------------------------------- */
@@ -89,21 +85,16 @@ export async function register(req, res) {
       });
     }
 
-
-    /* -----------------------------------------------------
-       ALLOWED ROLES
-    ----------------------------------------------------- */
-
     const allowedRoles = [
       "student",
       "mentor",
       "hod",
+      "principal",
     ];
 
-    const normalizedRole =
-      String(role)
-        .trim()
-        .toLowerCase();
+    const normalizedRole = String(role)
+      .trim()
+      .toLowerCase();
 
     if (!allowedRoles.includes(normalizedRole)) {
       return res.status(400).json({
@@ -112,58 +103,44 @@ export async function register(req, res) {
       });
     }
 
-
     /* -----------------------------------------------------
        NORMALIZE
     ----------------------------------------------------- */
 
-    const normalizedName =
-      name.trim();
+    const normalizedName = name.trim();
 
-    const normalizedEmail =
-      email
-        .trim()
-        .toLowerCase();
+    const normalizedEmail = email
+      .trim()
+      .toLowerCase();
 
-    const normalizedUSN =
-      usn
-        ? usn
-            .trim()
-            .toUpperCase()
-        : "";
-
+    const normalizedUSN = usn
+      ? usn.trim().toUpperCase()
+      : "";
 
     /* -----------------------------------------------------
        CHECK EMAIL
     ----------------------------------------------------- */
 
-    const existingUser =
-      await User.findOne({
-        email: normalizedEmail,
-      });
+    const existingUser = await User.findOne({
+      email: normalizedEmail,
+    });
 
     if (existingUser) {
       return res.status(409).json({
         success: false,
-        message:
-          "Email already registered",
+        message: "Email already registered",
       });
     }
-
 
     /* -----------------------------------------------------
        STUDENT USN CHECK
     ----------------------------------------------------- */
 
-    if (
-      normalizedRole ===
-      "student"
-    ) {
+    if (normalizedRole === "student") {
       if (!normalizedUSN) {
         return res.status(400).json({
           success: false,
-          message:
-            "USN is required for students",
+          message: "USN is required for students",
         });
       }
 
@@ -181,63 +158,51 @@ export async function register(req, res) {
       }
     }
 
-
     /* -----------------------------------------------------
        HASH PASSWORD
     ----------------------------------------------------- */
 
     const hashedPassword =
-      await bcrypt.hash(
-        password,
-        12
-      );
-
+      await bcrypt.hash(password, 12);
 
     /* -----------------------------------------------------
        CREATE USER
     ----------------------------------------------------- */
 
-    createdUser =
-      await User.create({
-        name: normalizedName,
+    createdUser = await User.create({
+      name: normalizedName,
 
-        email: normalizedEmail,
+      email: normalizedEmail,
 
-        password: hashedPassword,
+      password: hashedPassword,
 
-        role: normalizedRole,
+      role: normalizedRole,
 
-        department:
-          department ||
-          "Computer Science & Engineering",
+      department:
+        department ||
+        "Computer Science & Engineering",
 
-        phone: phone || "",
+      phone: phone || "",
 
-        usn: normalizedUSN,
+      usn: normalizedUSN,
 
-        designation:
-          normalizedRole,
+      designation: normalizedRole,
 
-        semester:
-          semester || "",
+      semester: semester || "",
 
-        active: true,
-      });
+      active: true,
+    });
 
     console.log(
       "✅ USER CREATED:",
       createdUser._id.toString()
     );
 
-
     /* -----------------------------------------------------
        CREATE STUDENT PROFILE
     ----------------------------------------------------- */
 
-    if (
-      normalizedRole ===
-      "student"
-    ) {
+    if (normalizedRole === "student") {
       const student =
         await Student.create({
           name: normalizedName,
@@ -252,24 +217,19 @@ export async function register(req, res) {
 
           mentor: "",
 
+          attendance: 0,
+
           phone: phone || "",
 
           subjects: [],
 
           cie1: 0,
-
           cie2: 0,
-
           cie3: 0,
-
           final: 0,
-
           set: 0,
-
           total: 0,
-
           grade: "",
-
           backlog: 0,
 
           marksUpdatedBy: "",
@@ -283,15 +243,11 @@ export async function register(req, res) {
       );
     }
 
-
     /* -----------------------------------------------------
        CREATE MENTOR PROFILE
     ----------------------------------------------------- */
 
-    if (
-      normalizedRole ===
-      "mentor"
-    ) {
+    if (normalizedRole === "mentor") {
       const mentor =
         await Mentor.create({
           mentorId:
@@ -323,15 +279,11 @@ export async function register(req, res) {
       );
     }
 
-
     /* -----------------------------------------------------
        CREATE TOKEN
     ----------------------------------------------------- */
 
-    const token =
-      tokenFor(
-        createdUser
-      );
+    const token = tokenFor(createdUser);
 
     console.log(
       "🎉 REGISTRATION SUCCESS:",
@@ -346,14 +298,9 @@ export async function register(req, res) {
 
       token,
 
-      user:
-        safeUser(
-          createdUser
-        ),
+      user: safeUser(createdUser),
     });
-
   } catch (error) {
-
     console.error(
       "\n================================="
     );
@@ -368,15 +315,12 @@ export async function register(req, res) {
       "=================================\n"
     );
 
-
     /* -----------------------------------------------------
        CLEANUP
     ----------------------------------------------------- */
 
     if (createdUser?._id) {
-
       try {
-
         await User.findByIdAndDelete(
           createdUser._id
         );
@@ -384,29 +328,19 @@ export async function register(req, res) {
         console.log(
           "🧹 Incomplete user removed"
         );
-
-      } catch (
-        cleanupError
-      ) {
-
+      } catch (cleanupError) {
         console.error(
           "❌ Cleanup failed:",
           cleanupError
         );
-
       }
     }
-
 
     /* -----------------------------------------------------
        DUPLICATE KEY
     ----------------------------------------------------- */
 
-    if (
-      error.code ===
-      11000
-    ) {
-
+    if (error.code === 11000) {
       return res.status(409).json({
         success: false,
 
@@ -414,11 +348,9 @@ export async function register(req, res) {
           "Email or USN already exists",
 
         details:
-          error.keyValue ||
-          {},
+          error.keyValue || {},
       });
     }
-
 
     /* -----------------------------------------------------
        VALIDATION
@@ -428,13 +360,11 @@ export async function register(req, res) {
       error.name ===
       "ValidationError"
     ) {
-
       const messages =
         Object.values(
           error.errors
         ).map(
-          (err) =>
-            err.message
+          (err) => err.message
         );
 
       return res.status(400).json({
@@ -444,7 +374,6 @@ export async function register(req, res) {
           messages.join(", "),
       });
     }
-
 
     return res.status(500).json({
       success: false,
@@ -456,104 +385,64 @@ export async function register(req, res) {
   }
 }
 
-
 /* =========================================================
    LOGIN
 ========================================================= */
 
-export async function login(
-  req,
-  res
-) {
-
+export async function login(req, res) {
   try {
-
     const {
       email,
       password,
       role,
     } = req.body;
 
+    console.log("\n=================================");
+    console.log("🔐 LOGIN REQUEST");
+    console.log("Email:", email);
+    console.log("Requested role:", role);
+    console.log("=================================");
 
-    console.log(
-      "\n================================="
-    );
-
-    console.log(
-      "🔐 LOGIN REQUEST"
-    );
-
-    console.log(
-      "Email:",
-      email
-    );
-
-    console.log(
-      "Requested role:",
-      role
-    );
-
-    console.log(
-      "================================="
-    );
-
-
-    if (
-      !email ||
-      !password ||
-      !role
-    ) {
-
+    if (!email || !password || !role) {
       return res.status(400).json({
         success: false,
-
         message:
           "Email, password and role are required",
       });
     }
 
+    const normalizedEmail = email
+      .trim()
+      .toLowerCase();
 
-    const normalizedEmail =
-      email
-        .trim()
-        .toLowerCase();
-
-    const normalizedRole =
-      role
-        .trim()
-        .toLowerCase();
-
+    const normalizedRole = role
+      .trim()
+      .toLowerCase();
 
     /* -----------------------------------------------------
        FIND USER
     ----------------------------------------------------- */
 
-    const user =
-      await User.findOne({
-        email:
-          normalizedEmail,
-      });
+    const user = await User.findOne({
+      email: normalizedEmail,
+    });
 
     if (!user) {
-
       console.log(
         "❌ USER NOT FOUND"
       );
 
       return res.status(401).json({
         success: false,
-
         message:
           "Invalid email or password",
       });
     }
 
-
     console.log(
       "Database role:",
       user.role
     );
-
 
     /* -----------------------------------------------------
        PASSWORD
@@ -566,29 +455,24 @@ export async function login(
       );
 
     if (!passwordMatch) {
-
       console.log(
         "❌ PASSWORD INCORRECT"
       );
 
       return res.status(401).json({
         success: false,
-
         message:
           "Invalid email or password",
       });
     }
-
 
     /* -----------------------------------------------------
        ROLE
     ----------------------------------------------------- */
 
     if (
-      user.role !==
-      normalizedRole
+      user.role !== normalizedRole
     ) {
-
       console.log(
         `❌ ROLE MISMATCH: selected=${normalizedRole}, database=${user.role}`
       );
@@ -601,17 +485,14 @@ export async function login(
       });
     }
 
-
     /* -----------------------------------------------------
        TOKEN
     ----------------------------------------------------- */
 
-    const token =
-      tokenFor(user);
+    const token = tokenFor(user);
 
     const responseUser =
       safeUser(user);
-
 
     console.log(
       "✅ LOGIN SUCCESS:",
@@ -627,21 +508,16 @@ export async function login(
       "=================================\n"
     );
 
-
     return res.status(200).json({
       success: true,
 
-      message:
-        "Login successful",
+      message: "Login successful",
 
       token,
 
-      user:
-        responseUser,
+      user: responseUser,
     });
-
   } catch (error) {
-
     console.error(
       "❌ LOGIN ERROR:",
       error
@@ -657,38 +533,25 @@ export async function login(
   }
 }
 
-
 /* =========================================================
    CURRENT USER
 ========================================================= */
 
-export async function me(
-  req,
-  res
-) {
-
+export async function me(req, res) {
   try {
-
     if (!req.user) {
-
       return res.status(401).json({
         success: false,
-
         message:
           "Not authenticated",
       });
     }
 
-
     return res.status(200).json({
       success: true,
-
-      user:
-        req.user,
+      user: req.user,
     });
-
   } catch (error) {
-
     console.error(
       "❌ ME ERROR:",
       error

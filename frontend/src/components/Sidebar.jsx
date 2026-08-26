@@ -1,14 +1,11 @@
 import React from "react";
-import {
-  useLocation,
-  useNavigate,
-} from "react-router-dom";
-
+import { useLocation, useNavigate } from "react-router-dom";
 
 /*
 |--------------------------------------------------------------------------
 | ROLE MENUS
 |--------------------------------------------------------------------------
+| Attendance has been completely removed.
 */
 
 const roleMenus = {
@@ -18,50 +15,37 @@ const roleMenus = {
       label: "Dashboard",
       icon: "⌂",
     },
-
     {
       key: "academic-records",
       label: "Academic Records",
       icon: "▣",
     },
-
     {
       key: "schedule",
       label: "My Schedule",
       icon: "◷",
     },
-
     {
       key: "reports",
       label: "Reports",
       icon: "▤",
     },
-
     {
       key: "notifications",
       label: "Notifications",
       icon: "◉",
     },
-
-    {
-      key: "messages",
-      label: "Messages",
-      icon: "💬",
-    },
-
     {
       key: "tasks",
       label: "My Tasks",
       icon: "✓",
     },
-
     {
       key: "profile",
       label: "My Profile",
       icon: "♙",
     },
   ],
-
 
   mentor: [
     {
@@ -69,44 +53,32 @@ const roleMenus = {
       label: "Dashboard",
       icon: "⌂",
     },
-
     {
       key: "students",
       label: "My Students",
       icon: "♙",
     },
-
     {
       key: "performance",
       label: "Student Performance",
       icon: "▥",
     },
-
     {
       key: "sessions",
       label: "Mentoring Sessions",
       icon: "◷",
     },
-
-    {
-      key: "messages",
-      label: "Messages",
-      icon: "💬",
-    },
-
     {
       key: "reports",
       label: "Reports",
       icon: "▤",
     },
-
     {
       key: "profile",
       label: "My Profile",
       icon: "♙",
     },
   ],
-
 
   hod: [
     {
@@ -114,31 +86,59 @@ const roleMenus = {
       label: "Dashboard",
       icon: "⌂",
     },
-
     {
       key: "students",
       label: "Students",
       icon: "♙",
     },
-
     {
       key: "mentors",
       label: "Mentors",
       icon: "♟",
     },
-
     {
       key: "student-performance",
       label: "Student Performance",
       icon: "▥",
     },
-
     {
       key: "reports",
       label: "Reports",
       icon: "▤",
     },
+    {
+      key: "profile",
+      label: "My Profile",
+      icon: "♙",
+    },
+  ],
 
+  principal: [
+    {
+      key: "overview",
+      label: "Dashboard",
+      icon: "⌂",
+    },
+    {
+      key: "departments",
+      label: "Departments",
+      icon: "▦",
+    },
+    {
+      key: "faculty",
+      label: "Faculty",
+      icon: "♟",
+    },
+    {
+      key: "student-performance",
+      label: "Student Performance",
+      icon: "▥",
+    },
+    {
+      key: "reports",
+      label: "Reports",
+      icon: "▤",
+    },
     {
       key: "profile",
       label: "My Profile",
@@ -146,7 +146,6 @@ const roleMenus = {
     },
   ],
 };
-
 
 /*
 |--------------------------------------------------------------------------
@@ -158,8 +157,8 @@ const roleNames = {
   student: "Student",
   mentor: "Mentor",
   hod: "Head of Department",
+  principal: "Principal",
 };
-
 
 /*
 |--------------------------------------------------------------------------
@@ -170,22 +169,11 @@ const roleNames = {
 export default function Sidebar({
   role = "student",
 }) {
-
   const navigate = useNavigate();
-
   const location = useLocation();
 
-
-  /*
-  |--------------------------------------------------------------------------
-  | GET ROLE MENU
-  |--------------------------------------------------------------------------
-  */
-
   const menus =
-    roleMenus[role] ||
-    roleMenus.student;
-
+    roleMenus[role] || roleMenus.student;
 
   /*
   |--------------------------------------------------------------------------
@@ -196,25 +184,14 @@ export default function Sidebar({
   let user = {};
 
   try {
-
     user = JSON.parse(
       localStorage.getItem(
         "mentorconnect_user"
       ) || "{}"
     );
-
   } catch (error) {
-
     user = {};
-
   }
-
-
-  /*
-  |--------------------------------------------------------------------------
-  | USER NAME
-  |--------------------------------------------------------------------------
-  */
 
   const userName =
     user.name ||
@@ -223,18 +200,10 @@ export default function Sidebar({
     roleNames[role] ||
     "User";
 
-
-  /*
-  |--------------------------------------------------------------------------
-  | USER INITIAL
-  |--------------------------------------------------------------------------
-  */
-
   const userInitial =
     userName
       .charAt(0)
       .toUpperCase();
-
 
   /*
   |--------------------------------------------------------------------------
@@ -243,30 +212,19 @@ export default function Sidebar({
   */
 
   const isActive = (key) => {
-
-    const basePath =
-      `/${role}`;
-
+    const basePath = `/${role}`;
 
     if (key === "overview") {
-
       return (
-        location.pathname ===
-          basePath ||
-
-        location.pathname ===
-          `${basePath}/`
+        location.pathname === basePath ||
+        location.pathname === `${basePath}/`
       );
-
     }
-
 
     return location.pathname.startsWith(
       `${basePath}/${key}`
     );
-
   };
-
 
   /*
   |--------------------------------------------------------------------------
@@ -275,24 +233,13 @@ export default function Sidebar({
   */
 
   const openPage = (key) => {
-
     if (key === "overview") {
-
-      navigate(
-        `/${role}`
-      );
-
+      navigate(`/${role}`);
       return;
-
     }
 
-
-    navigate(
-      `/${role}/${key}`
-    );
-
+    navigate(`/${role}/${key}`);
   };
-
 
   /*
   |--------------------------------------------------------------------------
@@ -301,22 +248,17 @@ export default function Sidebar({
   */
 
   const logout = () => {
-
-    const confirmed =
-      window.confirm(
-        "Are you sure you want to logout?"
-      );
-
+    const confirmed = window.confirm(
+      "Are you sure you want to logout?"
+    );
 
     if (!confirmed) {
       return;
     }
 
-
     /*
-     * Current authentication
+     * Remove current authentication
      */
-
     localStorage.removeItem(
       "mentorconnect_token"
     );
@@ -325,37 +267,20 @@ export default function Sidebar({
       "mentorconnect_user"
     );
 
+    /*
+     * Remove old authentication keys
+     */
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("authToken");
 
     /*
-     * Old authentication keys
+     * Go to login page
      */
-
-    localStorage.removeItem(
-      "token"
-    );
-
-    localStorage.removeItem(
-      "user"
-    );
-
-    localStorage.removeItem(
-      "authToken"
-    );
-
-
-    /*
-     * Return to login
-     */
-
-    navigate(
-      "/login",
-      {
-        replace: true,
-      }
-    );
-
+    navigate("/login", {
+      replace: true,
+    });
   };
-
 
   /*
   |--------------------------------------------------------------------------
@@ -365,7 +290,6 @@ export default function Sidebar({
 
   return (
     <aside className="mc-sidebar">
-
 
       {/* =====================================================
           BRAND
@@ -377,21 +301,15 @@ export default function Sidebar({
           🎓
         </div>
 
-
         <div>
-
           <strong>
             Mentor
-            <span>
-              Connect
-            </span>
+            <span>Connect</span>
           </strong>
-
 
           <small>
             Smart Mentoring System
           </small>
-
         </div>
 
       </div>
@@ -407,13 +325,11 @@ export default function Sidebar({
           {userInitial}
         </div>
 
-
         <div className="mc-sidebar-user-info">
 
           <strong>
             {userName}
           </strong>
-
 
           <small>
             {roleNames[role]}
@@ -434,42 +350,34 @@ export default function Sidebar({
           WORKSPACE
         </span>
 
-
         <nav className="mc-side-nav">
 
-          {menus.map(
-            (item) => (
+          {menus.map((item) => (
 
-              <button
-                key={item.key}
-                type="button"
-                className={
-                  isActive(
-                    item.key
-                  )
-                    ? "mc-side-link active"
-                    : "mc-side-link"
-                }
-                onClick={() =>
-                  openPage(
-                    item.key
-                  )
-                }
-              >
+            <button
+              key={item.key}
+              type="button"
+              className={
+                isActive(item.key)
+                  ? "mc-side-link active"
+                  : "mc-side-link"
+              }
+              onClick={() =>
+                openPage(item.key)
+              }
+            >
 
-                <span className="mc-side-icon">
-                  {item.icon}
-                </span>
+              <span className="mc-side-icon">
+                {item.icon}
+              </span>
 
+              <span className="mc-side-label">
+                {item.label}
+              </span>
 
-                <span className="mc-side-label">
-                  {item.label}
-                </span>
+            </button>
 
-              </button>
-
-            )
-          )}
+          ))}
 
         </nav>
 
@@ -503,7 +411,6 @@ export default function Sidebar({
             ⚙
           </span>
 
-
           <span className="mc-side-label">
             Settings
           </span>
@@ -522,7 +429,6 @@ export default function Sidebar({
           <span className="mc-side-icon">
             ↪
           </span>
-
 
           <span className="mc-side-label">
             Logout
