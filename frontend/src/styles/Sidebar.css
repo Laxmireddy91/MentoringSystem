@@ -1,0 +1,627 @@
+/* =========================================================
+   MENTORCONNECT SIDEBAR
+   Strong scoped styles to prevent global CSS conflicts
+========================================================= */
+
+.mc-sidebar {
+  width: 250px !important;
+  min-width: 250px !important;
+  height: 100vh !important;
+  min-height: 100vh !important;
+
+  position: sticky !important;
+  top: 0 !important;
+  left: 0 !important;
+
+  display: flex !important;
+  flex-direction: column !important;
+
+  padding: 22px 14px 16px !important;
+
+  background:
+    linear-gradient(
+      180deg,
+      #0b1733 0%,
+      #09162f 100%
+    ) !important;
+
+  color: #ffffff !important;
+
+  border: none !important;
+
+  box-shadow:
+    8px 0 30px
+    rgba(15, 23, 42, 0.08) !important;
+
+  z-index: 100 !important;
+
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif !important;
+}
+
+/* =========================================================
+   BRAND
+========================================================= */
+
+.mc-sidebar .mc-brand {
+  width: 100% !important;
+
+  display: flex !important;
+  align-items: center !important;
+
+  gap: 11px !important;
+
+  padding:
+    4px 9px 22px !important;
+
+  margin: 0 !important;
+
+  background: transparent !important;
+
+  border: none !important;
+}
+
+.mc-sidebar .mc-brand-icon {
+  width: 40px !important;
+  min-width: 40px !important;
+  height: 40px !important;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  border-radius: 11px !important;
+
+  background:
+    linear-gradient(
+      135deg,
+      #7c3aed,
+      #5b21b6
+    ) !important;
+
+  color: #ffffff !important;
+
+  font-size: 19px !important;
+
+  box-shadow:
+    0 8px 20px
+    rgba(124, 58, 237, 0.3) !important;
+
+  flex-shrink: 0 !important;
+}
+
+.mc-sidebar .mc-brand > div:last-child {
+  min-width: 0 !important;
+
+  display: block !important;
+}
+
+.mc-sidebar .mc-brand strong {
+  display: block !important;
+
+  margin: 0 !important;
+  padding: 0 !important;
+
+  color: #ffffff !important;
+
+  font-size: 17px !important;
+  font-weight: 700 !important;
+
+  line-height: 1.15 !important;
+
+  white-space: nowrap !important;
+}
+
+.mc-sidebar .mc-brand strong span {
+  color: #9b7af7 !important;
+}
+
+.mc-sidebar .mc-brand small {
+  display: block !important;
+
+  margin:
+    5px 0 0 !important;
+
+  padding: 0 !important;
+
+  color: #8997b7 !important;
+
+  font-size: 9px !important;
+
+  line-height: 1.2 !important;
+
+  white-space: nowrap !important;
+}
+
+/* =========================================================
+   USER CARD
+========================================================= */
+
+.mc-sidebar .mc-sidebar-user {
+  width: 100% !important;
+
+  display: flex !important;
+  align-items: center !important;
+
+  gap: 10px !important;
+
+  margin:
+    0 0 22px !important;
+
+  padding:
+    11px !important;
+
+  background:
+    rgba(255, 255, 255, 0.055) !important;
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.07) !important;
+
+  border-radius: 10px !important;
+
+  box-sizing: border-box !important;
+}
+
+.mc-sidebar .mc-sidebar-avatar {
+  width: 36px !important;
+  min-width: 36px !important;
+  height: 36px !important;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  border-radius: 50% !important;
+
+  background:
+    linear-gradient(
+      135deg,
+      #8b5cf6,
+      #4f46e5
+    ) !important;
+
+  color: #ffffff !important;
+
+  font-size: 13px !important;
+  font-weight: 700 !important;
+
+  flex-shrink: 0 !important;
+}
+
+.mc-sidebar .mc-sidebar-user-info {
+  min-width: 0 !important;
+
+  display: block !important;
+
+  overflow: hidden !important;
+}
+
+.mc-sidebar .mc-sidebar-user-info strong {
+  display: block !important;
+
+  margin: 0 !important;
+  padding: 0 !important;
+
+  color: #ffffff !important;
+
+  font-size: 11px !important;
+  font-weight: 700 !important;
+
+  line-height: 1.3 !important;
+
+  white-space: nowrap !important;
+
+  overflow: hidden !important;
+
+  text-overflow: ellipsis !important;
+}
+
+.mc-sidebar .mc-sidebar-user-info small {
+  display: block !important;
+
+  margin:
+    3px 0 0 !important;
+
+  padding: 0 !important;
+
+  color: #8997b7 !important;
+
+  font-size: 9px !important;
+
+  line-height: 1.2 !important;
+}
+
+/* =========================================================
+   SECTION TITLE
+========================================================= */
+
+.mc-sidebar .mc-sidebar-section {
+  flex: 1 1 auto !important;
+
+  width: 100% !important;
+
+  min-height: 0 !important;
+}
+
+.mc-sidebar .mc-sidebar-heading {
+  display: block !important;
+
+  width: 100% !important;
+
+  margin: 0 !important;
+
+  padding:
+    0 9px 8px !important;
+
+  color: #687795 !important;
+
+  font-size: 8px !important;
+
+  font-weight: 800 !important;
+
+  letter-spacing: 1.3px !important;
+
+  line-height: 1.3 !important;
+}
+
+/* =========================================================
+   NAVIGATION CONTAINER
+========================================================= */
+
+.mc-sidebar .mc-sidebar-nav {
+  width: 100% !important;
+
+  display: flex !important;
+
+  flex-direction: column !important;
+
+  gap: 3px !important;
+
+  margin: 0 !important;
+
+  padding: 0 !important;
+
+  background: transparent !important;
+
+  border: none !important;
+}
+
+/* =========================================================
+   NAVIGATION BUTTONS
+========================================================= */
+
+/*
+   !important is intentional here because the
+   existing project has global button styles.
+*/
+
+.mc-sidebar .mc-sidebar-nav button {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 39px !important;
+
+  display: flex !important;
+  align-items: center !important;
+
+  gap: 11px !important;
+
+  margin: 0 !important;
+  padding:
+    0 11px !important;
+
+  border: none !important;
+  outline: none !important;
+
+  border-radius: 8px !important;
+
+  background: transparent !important;
+
+  color: #aeb9d0 !important;
+
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif !important;
+
+  font-size: 11px !important;
+
+  font-weight: 500 !important;
+
+  line-height: 1 !important;
+
+  text-align: left !important;
+
+  text-decoration: none !important;
+
+  box-shadow: none !important;
+
+  cursor: pointer !important;
+
+  white-space: nowrap !important;
+
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease !important;
+}
+
+.mc-sidebar .mc-sidebar-nav button:hover {
+  background:
+    rgba(255, 255, 255, 0.065) !important;
+
+  color: #ffffff !important;
+
+  border: none !important;
+
+  box-shadow: none !important;
+
+  transform:
+    translateX(2px) !important;
+}
+
+.mc-sidebar .mc-sidebar-nav button.active {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(124, 58, 237, 0.34),
+      rgba(124, 58, 237, 0.10)
+    ) !important;
+
+  color: #ffffff !important;
+
+  border: none !important;
+
+  box-shadow:
+    inset 3px 0 0 #8b5cf6 !important;
+
+  font-weight: 650 !important;
+}
+
+.mc-sidebar .mc-sidebar-nav button:focus,
+.mc-sidebar .mc-sidebar-nav button:focus-visible {
+  outline: none !important;
+
+  border: none !important;
+
+  box-shadow:
+    inset 3px 0 0 #8b5cf6 !important;
+}
+
+/* =========================================================
+   NAV ICON
+========================================================= */
+
+.mc-sidebar .mc-sidebar-icon {
+  width: 20px !important;
+  min-width: 20px !important;
+  height: 20px !important;
+
+  display: inline-flex !important;
+
+  align-items: center !important;
+  justify-content: center !important;
+
+  margin: 0 !important;
+  padding: 0 !important;
+
+  color: inherit !important;
+
+  font-size: 15px !important;
+
+  line-height: 1 !important;
+
+  background: transparent !important;
+
+  border: none !important;
+
+  flex-shrink: 0 !important;
+}
+
+.mc-sidebar .mc-sidebar-nav button > span:last-child {
+  display: block !important;
+
+  margin: 0 !important;
+  padding: 0 !important;
+
+  color: inherit !important;
+
+  font-size: 11px !important;
+
+  line-height: 1 !important;
+}
+
+/* =========================================================
+   BOTTOM SYSTEM
+========================================================= */
+
+.mc-sidebar .mc-sidebar-bottom {
+  width: 100% !important;
+
+  margin:
+    15px 0 0 !important;
+
+  padding:
+    15px 0 0 !important;
+
+  border-top:
+    1px solid
+    rgba(255, 255, 255, 0.08) !important;
+}
+
+.mc-sidebar .mc-sidebar-system,
+.mc-sidebar .mc-sidebar-logout {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+
+  width: 100% !important;
+  height: 39px !important;
+
+  display: flex !important;
+  align-items: center !important;
+
+  gap: 11px !important;
+
+  margin: 0 0 3px !important;
+
+  padding:
+    0 11px !important;
+
+  border: none !important;
+  outline: none !important;
+
+  border-radius: 8px !important;
+
+  background: transparent !important;
+
+  color: #aeb9d0 !important;
+
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif !important;
+
+  font-size: 11px !important;
+
+  font-weight: 500 !important;
+
+  line-height: 1 !important;
+
+  text-align: left !important;
+
+  cursor: pointer !important;
+
+  box-shadow: none !important;
+}
+
+.mc-sidebar .mc-sidebar-system:hover {
+  background:
+    rgba(255, 255, 255, 0.065) !important;
+
+  color: #ffffff !important;
+}
+
+.mc-sidebar .mc-sidebar-logout {
+  color: #ff7777 !important;
+}
+
+.mc-sidebar .mc-sidebar-logout:hover {
+  color: #ff9999 !important;
+
+  background:
+    rgba(239, 68, 68, 0.08) !important;
+}
+
+.mc-sidebar .mc-sidebar-system .mc-sidebar-icon,
+.mc-sidebar .mc-sidebar-logout .mc-sidebar-icon {
+  color: inherit !important;
+}
+
+/* =========================================================
+   VERSION
+========================================================= */
+
+.mc-sidebar .mc-sidebar-version {
+  display: block !important;
+
+  margin:
+    12px 0 0 !important;
+
+  padding:
+    0 9px !important;
+
+  color: #5f6c87 !important;
+
+  font-size: 8px !important;
+
+  line-height: 1.2 !important;
+}
+
+/* =========================================================
+   SCROLLBAR
+========================================================= */
+
+.mc-sidebar::-webkit-scrollbar {
+  width: 4px !important;
+}
+
+.mc-sidebar::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.mc-sidebar::-webkit-scrollbar-thumb {
+  background:
+    rgba(255, 255, 255, 0.12) !important;
+
+  border-radius: 10px !important;
+}
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (max-width: 900px) {
+  .mc-sidebar {
+    width: 72px !important;
+    min-width: 72px !important;
+
+    padding:
+      20px 8px !important;
+  }
+
+  .mc-sidebar .mc-brand {
+    justify-content: center !important;
+
+    padding:
+      0 0 20px !important;
+  }
+
+  .mc-sidebar .mc-brand > div:last-child,
+  .mc-sidebar .mc-sidebar-user-info,
+  .mc-sidebar .mc-sidebar-heading,
+  .mc-sidebar .mc-sidebar-nav button > span:last-child,
+  .mc-sidebar .mc-sidebar-system > span:last-child,
+  .mc-sidebar .mc-sidebar-logout > span:last-child,
+  .mc-sidebar .mc-sidebar-version {
+    display: none !important;
+  }
+
+  .mc-sidebar .mc-sidebar-user {
+    justify-content: center !important;
+
+    padding: 7px !important;
+  }
+
+  .mc-sidebar .mc-sidebar-nav button,
+  .mc-sidebar .mc-sidebar-system,
+  .mc-sidebar .mc-sidebar-logout {
+    justify-content: center !important;
+
+    padding:
+      0 5px !important;
+  }
+
+  .mc-sidebar .mc-sidebar-icon {
+    margin: 0 !important;
+  }
+}
+
+@media (max-width: 500px) {
+  .mc-sidebar {
+    display: none !important;
+  }
+}
