@@ -1140,6 +1140,15 @@ router.put(
           }
         );
 
+        if (saved?.user) {
+  await Notification.create({
+    title: "Academic Marks Updated",
+    text: `Your academic marks have been updated by ${req.user.name}.`,
+    type: "academic",
+    user: saved.user,
+  });
+}
+
       if (!student) {
         return res
           .status(404)
@@ -1258,6 +1267,16 @@ router.put(
         { $set: updates },
         { new: true, runValidators: true }
       );
+
+      // Create notification for the student
+if (saved?.user) {
+  await Notification.create({
+    title: "Academic Marks Updated",
+    text: `Your academic marks have been updated by ${req.user.name}.`,
+    type: "academic",
+    user: saved.user,
+  });
+}
 
       return res.json({
         ...saved.toObject(),
@@ -1812,6 +1831,15 @@ router.post(
           createdBy:
             req.user._id,
         });
+
+
+       // Create notification for a newly scheduled session
+await Notification.create({
+  title: "New Mentoring Session",
+  text: `A mentoring session "${session.title}" has been scheduled for ${session.date}.`,
+  type: "session",
+  user: null,
+}); 
 
       return res
         .status(201)
