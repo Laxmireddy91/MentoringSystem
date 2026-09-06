@@ -7,7 +7,6 @@ import Mentor from "../models/Mentor.js";
 import Session from "../models/Session.js";
 import Notification from "../models/Notification.js";
 import Task from "../models/Task.js";
-import Report from "../models/Report.js";
 import User from "../models/User.js";
 import { protect, allowRoles } from "../middleware/auth.js";
 
@@ -635,6 +634,14 @@ router.get(
           .lean();
 
 
+
+/*
+|--------------------------------------------------------------------------
+| REPORTS CRUD
+|--------------------------------------------------------------------------
+*/
+
+
       /*
       |--------------------------------------------------------------------------
       | NOTIFICATIONS
@@ -682,21 +689,7 @@ router.get(
 
 
       /*
-      |--------------------------------------------------------------------------
-      | REPORTS
-      |--------------------------------------------------------------------------
-      */
-
-      const reports =
-        await Report.find()
-          .sort({
-            date: -1,
-            createdAt: -1,
-          })
-          .lean();
-
-
-      /*
+   
       |--------------------------------------------------------------------------
       | PROFILES
       |--------------------------------------------------------------------------
@@ -832,15 +825,6 @@ router.get(
               ...notification,
               id:
                 notification._id.toString(),
-            })
-          ),
-
-        reports:
-          reports.map(
-            (report) => ({
-              ...report,
-              id:
-                report._id.toString(),
             })
           ),
 
