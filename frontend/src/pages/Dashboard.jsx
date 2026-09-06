@@ -1906,14 +1906,14 @@ emergencyContact: item.emergencyContact || "",
 
         <div className="mc-grid-2">
                   {/* =====================================================
-            AI STUDENT RISK MONITOR
+            STUDENT RISK MONITOR
         ====================================================== */}
 
         {(role === "mentor" || role === "hod") && (
           <section className="mc-card mc-ai-risk-card">
 
             <CardTitle
-              title="🤖 AI Student Risk Monitor"
+            title="Student Risk Monitor - Rule-Based Analysis"
               sub="Early-warning analysis based on academic performance"
             />
 
