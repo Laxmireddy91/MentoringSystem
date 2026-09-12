@@ -42,6 +42,7 @@ const sections = [
   "sessions",
   "mentors",
   "student-performance",
+  "analytics"
 ];
 
 /*

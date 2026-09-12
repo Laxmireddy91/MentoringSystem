@@ -673,14 +673,15 @@ const studentTabs = [
     "profile",
   ];
 
-  const hodTabs = [
-    "overview",
-    "mentors",
-    "student-performance",
-    "students",
-    "reports",
-    "profile",
-  ];
+const hodTabs = [
+  "overview",
+  "analytics",
+  "mentors",
+  "student-performance",
+  "students",
+  "reports",
+  "profile",
+];
 
 
 
@@ -712,6 +713,9 @@ const studentTabs = [
 
     sessions:
       "Mentoring Sessions",
+
+    analytics:
+    "Department Analytics",
 
     departments:
       "Department Analytics",
@@ -3888,12 +3892,14 @@ emergencyContact: item.emergencyContact || "",
   function Analytics({
     type,
   }) {
-    const title =
-      type === "departments"
-        ? "Department Analytics"
-        : type === "faculty"
-        ? "Faculty Overview"
-        : "Student Performance";
+const title =
+  type === "analytics"
+    ? "Department Analytics"
+    : type === "departments"
+    ? "Department Analytics"
+    : type === "faculty"
+    ? "Faculty Overview"
+    : "Student Performance";
 
     const departments =
       analytics?.departments ||
@@ -3916,10 +3922,10 @@ emergencyContact: item.emergencyContact || "",
           sub="Live backend analytics and decision support"
         />
 
-        {type ===
-          "departments" &&
-          departments.length >
-            0 && (
+       {(type === "analytics" ||
+  type === "departments") &&
+  departments.length >
+    0 && (
             <div className="mc-table-wrap">
 
               <table>
@@ -4249,16 +4255,17 @@ emergencyContact: item.emergencyContact || "",
       return <Tasks />;
     }
 
-    if (
-      tab === "departments" ||
-      tab === "faculty"
-    ) {
-      return (
-        <Analytics
-          type={tab}
-        />
-      );
-    }
+if (
+  tab === "analytics" ||
+  tab === "departments" ||
+  tab === "faculty"
+) {
+  return (
+    <Analytics
+      type={tab}
+    />
+  );
+}
 
     return <Overview />;
   }
