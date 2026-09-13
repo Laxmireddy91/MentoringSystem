@@ -307,6 +307,10 @@ export default function Dashboard({
   const [search, setSearch] =
     useState("");
 
+const [studentPage, setStudentPage] =
+  useState(1);
+
+const studentsPerPage = 10;
   const [toast, setToast] =
     useState("");
 
@@ -753,6 +757,20 @@ const hodTabs = [
             search.toLowerCase()
           )
     );
+
+    const totalStudentPages =
+  Math.ceil(
+    filteredStudents.length /
+      studentsPerPage
+  );
+
+const paginatedStudents =
+  filteredStudents.slice(
+    (studentPage - 1) *
+      studentsPerPage,
+    studentPage *
+      studentsPerPage
+  );
 
   const filteredMentors =
     data.mentors.filter(
@@ -2519,7 +2537,7 @@ emergencyContact: item.emergencyContact || "",
 
               <tbody>
 
-                {filteredStudents.map(
+                {paginatedStudents.map(
                   (student) => (
                     <tr
                       key={safeId(
@@ -2624,11 +2642,45 @@ emergencyContact: item.emergencyContact || "",
               </tbody>
 
             </table>
+          </div>
+        )}
 
+        {totalStudentPages > 1 && (
+          <div className="mc-pagination">
+            <button
+              className="mc-link"
+              disabled={studentPage === 1}
+              onClick={() =>
+                setStudentPage(
+                  (page) => page - 1
+                )
+              }
+            >
+              Previous
+            </button>
+
+            <span>
+              Page {studentPage} of {totalStudentPages}
+            </span>
+
+            <button
+              className="mc-link"
+              disabled={
+                studentPage === totalStudentPages
+              }
+              onClick={() =>
+                setStudentPage(
+                  (page) => page + 1
+                )
+              }
+            >
+              Next
+            </button>
           </div>
         )}
 
       </section>
+
     );
   }
 
