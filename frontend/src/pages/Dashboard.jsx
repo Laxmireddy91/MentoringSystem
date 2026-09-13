@@ -311,6 +311,10 @@ const [studentPage, setStudentPage] =
   useState(1);
 
 const studentsPerPage = 10;
+const [mentorPage, setMentorPage] =
+  useState(1);
+
+const mentorsPerPage = 10;
   const [toast, setToast] =
     useState("");
 
@@ -772,6 +776,8 @@ const paginatedStudents =
       studentsPerPage
   );
 
+
+
   const filteredMentors =
     data.mentors.filter(
       (mentor) =>
@@ -782,6 +788,21 @@ const paginatedStudents =
             search.toLowerCase()
           )
     );
+
+
+    const totalMentorPages =
+  Math.ceil(
+    filteredMentors.length /
+      mentorsPerPage
+  );
+
+const paginatedMentors =
+  filteredMentors.slice(
+    (mentorPage - 1) *
+      mentorsPerPage,
+    mentorPage *
+      mentorsPerPage
+  );
 
   /* =======================================================
      EXPORT
@@ -3186,6 +3207,40 @@ emergencyContact: item.emergencyContact || "",
 
         </div>
 
+        {totalMentorPages > 1 && (
+          <div className="mc-pagination">
+            <button
+              className="mc-link"
+              disabled={mentorPage === 1}
+              onClick={() =>
+                setMentorPage(
+                  (page) => page - 1
+                )
+              }
+            >
+              Previous
+            </button>
+
+            <span>
+              Page {mentorPage} of {totalMentorPages}
+            </span>
+
+            <button
+              className="mc-link"
+              disabled={
+                mentorPage === totalMentorPages
+              }
+              onClick={() =>
+                setMentorPage(
+                  (page) => page + 1
+                )
+              }
+            >
+              Next
+            </button>
+          </div>
+        )}
+
       </section>
     );
   }
@@ -3254,8 +3309,10 @@ emergencyContact: item.emergencyContact || "",
 
         <div className="mc-mentor-cards">
 
-          {filteredMentors.map(
+          {paginatedMentors.map(
             (mentor) => (
+
+              
               <div
                 className="mc-mentor"
                 key={safeId(
@@ -3391,7 +3448,7 @@ emergencyContact: item.emergencyContact || "",
 
             <tbody>
 
-              {filteredMentors.map(
+              {paginatedMentors.map(
                 (mentor) => (
                   <tr
                     key={safeId(
