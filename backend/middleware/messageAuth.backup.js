@@ -11,19 +11,19 @@ Allowed:
 
 Student  <------>  Assigned Mentor
 
-IMPORTANT:
-The student ↔ mentor relationship is determined ONLY by:
+The existing project stores the mentor assignment
+inside Student.mentor using the mentor's NAME.
 
-Student.mentorId -> Mentor._id
+Student:
+    mentor: "Mentor Name"
 
-We do NOT use:
+Mentor:
+    name: "Mentor Name"
+    user: ObjectId -> User
 
-Student.mentor -> Mentor.name
-
-Names are not reliable identifiers because:
-- names can change
-- two people can have the same name
-- spelling/case can differ
+We therefore verify both:
+1. The student is actually assigned to that mentor.
+2. The mentor User account matches the requested user.
 */
 
 /**
@@ -38,28 +38,10 @@ export async function canMessage(
   receiverId
 ) {
   try {
-    console.log(
-      "========== MESSAGE AUTH DEBUG =========="
-    );
-    console.log(
-      "Current User ID:",
-      currentUser?._id
-    );
-    console.log(
-      "Current User Role:",
-      currentUser?.role
-    );
-    console.log(
-      "Receiver ID:",
-      receiverId
-    );
-
-    /*
-    -------------------------------------------------------
-    VALIDATE USER INFORMATION
-    -------------------------------------------------------
-    */
-
+    console.log("========== MESSAGE AUTH DEBUG ==========");
+console.log("Current User ID:", currentUser?._id);
+console.log("Current User Role:", currentUser?.role);
+console.log("Receiver ID:", receiverId);
     if (!currentUser?._id || !receiverId) {
       return {
         allowed: false,
@@ -69,7 +51,7 @@ export async function canMessage(
 
     /*
     -------------------------------------------------------
-    LOAD RECEIVER USER
+    LOAD RECEIVER
     -------------------------------------------------------
     */
 
@@ -78,11 +60,7 @@ export async function canMessage(
     ).select(
       "_id name email role active"
     );
-
-    console.log(
-      "Receiver:",
-      receiver
-    );
+    console.log("Receiver:", receiver);
 
     if (!receiver) {
       return {
@@ -90,12 +68,6 @@ export async function canMessage(
         reason: "Receiver not found",
       };
     }
-
-    /*
-    -------------------------------------------------------
-    CHECK RECEIVER ACCOUNT
-    -------------------------------------------------------
-    */
 
     if (receiver.active === false) {
       return {
@@ -139,10 +111,9 @@ export async function canMessage(
           user: currentUser._id,
         }).lean();
 
-      console.log(
-        "Student profile:",
-        student
-      );
+        console.log("Student profile:", student);
+console.log("Assigned mentor:", student?.mentor);
+console.log("Receiver mentor name:", receiver?.name);
 
       if (!student) {
         return {
@@ -153,19 +124,40 @@ export async function canMessage(
       }
 
       /*
-       * Student must have an assigned Mentor.
+       * The existing system stores the assigned
+       * mentor by name.
        */
-      if (!student.mentorId) {
+      const assignedMentorName =
+        String(
+          student.mentor || ""
+        )
+          .trim()
+          .toLowerCase();
+
+      const receiverMentorName =
+        String(
+          receiver.name || ""
+        )
+          .trim()
+          .toLowerCase();
+
+      if (
+        !assignedMentorName ||
+        !receiverMentorName ||
+        assignedMentorName !==
+          receiverMentorName
+      ) {
         return {
           allowed: false,
           reason:
-            "You do not have an assigned mentor",
+            "You can only message your assigned mentor",
         };
       }
 
       /*
-       * Find the Mentor profile belonging
-       * to the receiver User.
+       * Extra verification:
+       * make sure this mentor User is actually
+       * connected to a Mentor profile.
        */
       const mentor =
         await Mentor.findOne({
@@ -180,30 +172,19 @@ export async function canMessage(
         };
       }
 
-      console.log(
-        "Student mentorId:",
-        String(student.mentorId)
-      );
-
-      console.log(
-        "Receiver mentor _id:",
-        String(mentor._id)
-      );
-
       /*
-       * THIS IS THE IMPORTANT CHECK.
-       *
-       * Student.mentorId must match
-       * Mentor._id.
+       * Verify Mentor profile name as well.
        */
       if (
-        String(student.mentorId) !==
-        String(mentor._id)
+        String(mentor.name || "")
+          .trim()
+          .toLowerCase() !==
+        assignedMentorName
       ) {
         return {
           allowed: false,
           reason:
-            "You can only message your assigned mentor",
+            "Mentor assignment verification failed",
         };
       }
 
@@ -243,7 +224,7 @@ export async function canMessage(
       }
 
       /*
-       * Find the Student profile belonging
+       * Find the student's profile belonging
        * to the receiver User.
        */
       const student =
@@ -260,35 +241,29 @@ export async function canMessage(
       }
 
       /*
-       * Student must have an assigned Mentor.
-       */
-      if (!student.mentorId) {
-        return {
-          allowed: false,
-          reason:
-            "This student does not have an assigned mentor",
-        };
-      }
-
-      console.log(
-        "Student mentorId:",
-        String(student.mentorId)
-      );
-
-      console.log(
-        "Current mentor _id:",
-        String(mentor._id)
-      );
-
-      /*
-       * THIS IS THE IMPORTANT CHECK.
+       * Existing assignment:
        *
-       * Student.mentorId must match
-       * the currently logged-in Mentor._id.
+       * student.mentor === mentor.name
        */
+      const assignedMentorName =
+        String(
+          student.mentor || ""
+        )
+          .trim()
+          .toLowerCase();
+
+      const currentMentorName =
+        String(
+          mentor.name || ""
+        )
+          .trim()
+          .toLowerCase();
+
       if (
-        String(student.mentorId) !==
-        String(mentor._id)
+        !assignedMentorName ||
+        !currentMentorName ||
+        assignedMentorName !==
+          currentMentorName
       ) {
         return {
           allowed: false,

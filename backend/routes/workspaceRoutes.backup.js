@@ -9,12 +9,6 @@ import Notification from "../models/Notification.js";
 import Task from "../models/Task.js";
 import Report from "../models/Report.js";
 import User from "../models/User.js";
-
-import {
-  createMentor,
-  updateMentor,
-  deleteMentor,
-} from "../controllers/mentorController.js";
 import { protect, allowRoles } from "../middleware/auth.js";
 
 const router = express.Router();
@@ -173,7 +167,7 @@ async function editAcademicRecord(req, res, next) {
 */
 
 function cleanStudentPayload(body = {}) {
- const allowed = [
+  const allowed = [
   "usn",
   "name",
   "dept",
@@ -287,7 +281,6 @@ async function buildProfiles(
   | FIND MENTOR
   |--------------------------------------------------------------------------
   */
-
 /*
 |--------------------------------------------------------------------------
 | FIND MENTOR USING mentorId
@@ -582,7 +575,7 @@ router.get(
       */
 
       let mentors;
-if (user.role === "student") {
+    if (user.role === "student") {
   /*
   |--------------------------------------------------------------------------
   | FIND ASSIGNED MENTOR USING mentorId
@@ -609,6 +602,7 @@ if (user.role === "student") {
           },
         }).lean()
       : [];
+}
       } else if (
         user.role === "mentor"
       ) {
@@ -634,14 +628,29 @@ if (user.role === "student") {
           }).select("_id");
 
         mentors =
-  await Mentor.find({
-    user: {
-      $in:
-        departmentMentors.map(
-          (x) => x._id
-        ),
-    },
-  }).lean();
+          await Mentor.find({
+            $or: [
+              {
+                user: {
+                  $in:
+                    departmentMentors.map(
+                      (x) => x._id
+                    ),
+                },
+              },
+              {
+                name: {
+                  $in:
+                    students
+                      .map(
+                        (x) =>
+                          x.mentor
+                      )
+                      .filter(Boolean),
+                },
+              },
+            ],
+          }).lean();
       } else {
         mentors =
           await Mentor.find().lean();
@@ -1118,19 +1127,15 @@ router.post(
               "USN already exists",
           });
       }
-      if (req.user.role === "mentor") {
-  const mentor = await Mentor.findOne({
-    user: req.user._id,
-  });
 
-  if (!mentor) {
-    return res.status(404).json({
-      message: "Mentor profile not found",
-    });
-  }
+      if (
+        req.user.role ===
+        "mentor"
+      ) {
+        payload.mentor =
+          req.user.name;
+      }
 
-  payload.mentorId = mentor._id;
-}
       const student =
         await Student.create(
           payload
@@ -1164,19 +1169,14 @@ router.put(
           req.body
         );
 
-      if (req.user.role === "mentor") {
-  const mentor = await Mentor.findOne({
-    user: req.user._id,
-  });
+      if (
+        req.user.role ===
+        "mentor"
+      ) {
+        payload.mentor =
+          req.user.name;
+      }
 
-  if (!mentor) {
-    return res.status(404).json({
-      message: "Mentor profile not found",
-    });
-  }
-
-  payload.mentorId = mentor._id;
-}
       const student =
         await Student.findByIdAndUpdate(
           getId(req),
@@ -1278,6 +1278,7 @@ router.put(
         usn: requestedUsn,
         dept: String(req.body.dept ?? student.dept ?? "").trim(),
         year: String(req.body.year ?? student.year ?? "").trim(),
+        mentor: String(req.body.mentor ?? student.mentor ?? "").trim(),
         subjects: normalizedSubjects,
         total: average,
         totalMarks,
@@ -1682,22 +1683,131 @@ router.put(
 
 router.post(
   "/mentors",
-  allowRoles("hod"),
-  createMentor
+  allowRoles(
+    "hod",
+   
+  ),
+  async (
+    req,
+    res,
+    next
+  ) => {
+    try {
+      const payload =
+        cleanMentorPayload(
+          req.body
+        );
+
+      const mentor =
+        await Mentor.create({
+          ...payload,
+
+          mentorId:
+            payload.mentorId ||
+            `M${Date.now()
+              .toString()
+              .slice(-6)}`,
+        });
+
+      return res
+        .status(201)
+        .json({
+          ...mentor.toObject(),
+          id:
+            mentor._id.toString(),
+        });
+    } catch (error) {
+      next(error);
+    }
+  }
 );
+
 
 router.put(
   "/mentors/:id",
-  allowRoles("hod"),
-  updateMentor
+  allowRoles(
+    "hod",
+  
+  ),
+  async (
+    req,
+    res,
+    next
+  ) => {
+    try {
+      const payload =
+        cleanMentorPayload(
+          req.body
+        );
+
+      const mentor =
+        await Mentor.findByIdAndUpdate(
+          getId(req),
+          payload,
+          {
+            new: true,
+            runValidators: true,
+          }
+        );
+
+      if (!mentor) {
+        return res
+          .status(404)
+          .json({
+            message:
+              "Mentor not found",
+          });
+      }
+
+      return res.json({
+        ...mentor.toObject(),
+        id:
+          mentor._id.toString(),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 );
 
 
 router.delete(
   "/mentors/:id",
-  allowRoles("hod"),
-  deleteMentor
+  allowRoles(
+    "hod",
+  
+  ),
+  async (
+    req,
+    res,
+    next
+  ) => {
+    try {
+      const mentor =
+        await Mentor.findByIdAndDelete(
+          getId(req)
+        );
+
+      if (!mentor) {
+        return res
+          .status(404)
+          .json({
+            message:
+              "Mentor not found",
+          });
+      }
+
+      return res.json({
+        success: true,
+        message:
+          "Mentor deleted",
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 );
+
 
 /*
 |--------------------------------------------------------------------------
