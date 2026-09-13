@@ -243,6 +243,37 @@ const api = {
           subjects,
         }
       ),
+
+    updatePerformanceReport: (
+      id,
+      report
+    ) =>
+      put(
+        `/workspace/students/${id}/performance-report`,
+        report
+      ),
+
+    getAchievements: (id) =>
+      get(
+        `/workspace/students/${id}/achievements`
+      ),
+
+    uploadAchievement: (
+      id,
+      achievement
+    ) =>
+      post(
+        `/workspace/students/${id}/achievements`,
+        achievement
+      ),
+
+    deleteAchievement: (
+      id,
+      achievementId
+    ) =>
+      del(
+        `/workspace/students/${id}/achievements/${achievementId}`
+      ),
   },
 
 

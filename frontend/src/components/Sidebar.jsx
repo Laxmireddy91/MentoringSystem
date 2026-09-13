@@ -44,6 +44,12 @@ const roleMenus = {
     },
 
     {
+      key: "messages",
+      label: "Messages",
+      icon: "💬",
+    },
+
+    {
       key: "tasks",
       label: "My Tasks",
       icon: "✓",
@@ -80,6 +86,12 @@ const roleMenus = {
       key: "sessions",
       label: "Mentoring Sessions",
       icon: "◷",
+    },
+
+    {
+      key: "messages",
+      label: "Messages",
+      icon: "💬",
     },
 
     {
