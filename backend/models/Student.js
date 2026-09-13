@@ -115,12 +115,6 @@ const studentSchema = new mongoose.Schema(
       trim: true,
     },
 
-    mentor: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
     mentorId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Mentor",
@@ -132,7 +126,16 @@ const studentSchema = new mongoose.Schema(
        OVERALL MARKS
        Attendance has been completely removed.
     ------------------------------------------------------- */
-
+  /*
+ * LEGACY / DERIVED ACADEMIC FIELDS
+ *
+ * The subjects[] array is the single source of truth
+ * for academic marks.
+ *
+ * These fields are retained temporarily for compatibility
+ * with existing frontend/API consumers and should be derived
+ * from subjects[] rather than treated as independently entered data.
+ */
     cie1: {
       type: Number,
       default: 0,

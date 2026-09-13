@@ -9,19 +9,85 @@ function calculateRisk(student) {
   let riskScore = 0;
   const reasons = [];
 
-  const cie1 = Number(student.cie1 || 0);
-  const cie2 = Number(student.cie2 || 0);
-  const cie3 = Number(student.cie3 || 0);
-  const finalMark = Number(student.final || 0);
-  const total = Number(student.total || 0);
-  const backlogs = Number(student.backlog || 0);
+const subjects = Array.isArray(student.subjects)
+  ? student.subjects
+  : [];
 
+const backlogs = Number(student.backlog || 0);
+
+const academicSubjects = subjects.filter((subject) => {
+  return (
+    Number(subject?.cie1 || 0) > 0 ||
+    Number(subject?.cie2 || 0) > 0 ||
+    Number(subject?.cie3 || 0) > 0 ||
+    Number(subject?.final || 0) > 0 ||
+    Number(subject?.set || 0) > 0 ||
+    Number(subject?.total || 0) > 0
+  );
+});
+const cie1 =
+  academicSubjects.length > 0
+    ? Number(
+        (
+          academicSubjects.reduce(
+            (sum, subject) =>
+              sum + Number(subject?.cie1 || 0),
+            0
+          ) / academicSubjects.length
+        ).toFixed(2)
+      )
+    : 0;
+const cie2 =
+  academicSubjects.length > 0
+    ? Number(
+        (
+          academicSubjects.reduce(
+            (sum, subject) =>
+              sum + Number(subject?.cie1 || 0),
+            0
+          ) / academicSubjects.length
+        ).toFixed(2)
+      )
+    : 0;
+
+const cie3 =
+  academicSubjects.length > 0
+    ? Number(
+        (
+          academicSubjects.reduce(
+            (sum, subject) =>
+              sum + Number(subject?.cie1 || 0),
+            0
+          ) / academicSubjects.length
+        ).toFixed(2)
+      )
+    : 0;
+  const total =
+  academicSubjects.length > 0
+    ? Number(
+        (
+          academicSubjects.reduce(
+            (sum, subject) =>
+              sum + Number(subject?.cie1 || 0),
+            0
+          ) / academicSubjects.length
+        ).toFixed(2)
+      )
+    : 0;
+    const final =
+  academicSubjects.length > 0
+    ? Number(
+        (
+          academicSubjects.reduce(
+            (sum, subject) =>
+              sum + Number(subject?.cie1 || 0),
+            0
+          ) / academicSubjects.length
+        ).toFixed(2)
+      )
+    : 0;
   const hasAcademicData =
-  cie1 > 0 ||
-  cie2 > 0 ||
-  cie3 > 0 ||
-  finalMark > 0 ||
-  total > 0;
+  academicSubjects.length > 0;
 
   if (!hasAcademicData && backlogs === 0) {
   return {
