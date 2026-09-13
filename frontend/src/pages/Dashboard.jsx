@@ -101,6 +101,14 @@ export default function Dashboard({
   const [search, setSearch] =
     useState("");
 
+const [studentPage, setStudentPage] =
+  useState(1);
+
+const studentsPerPage = 10;
+const [mentorPage, setMentorPage] =
+  useState(1);
+
+const mentorsPerPage = 10;
   const [toast, setToast] =
     useState("");
 
@@ -467,14 +475,15 @@ const studentTabs = [
     "profile",
   ];
 
-  const hodTabs = [
-    "overview",
-    "mentors",
-    "student-performance",
-    "students",
-    "reports",
-    "profile",
-  ];
+const hodTabs = [
+  "overview",
+  "analytics",
+  "mentors",
+  "student-performance",
+  "students",
+  "reports",
+  "profile",
+];
 
 
 
@@ -506,6 +515,9 @@ const studentTabs = [
 
     sessions:
       "Mentoring Sessions",
+
+    analytics:
+    "Department Analytics",
 
     departments:
       "Department Analytics",
@@ -544,6 +556,22 @@ const studentTabs = [
           )
     );
 
+    const totalStudentPages =
+  Math.ceil(
+    filteredStudents.length /
+      studentsPerPage
+  );
+
+const paginatedStudents =
+  filteredStudents.slice(
+    (studentPage - 1) *
+      studentsPerPage,
+    studentPage *
+      studentsPerPage
+  );
+
+
+
   const filteredMentors =
     data.mentors.filter(
       (mentor) =>
@@ -554,6 +582,21 @@ const studentTabs = [
             search.toLowerCase()
           )
     );
+
+
+    const totalMentorPages =
+  Math.ceil(
+    filteredMentors.length /
+      mentorsPerPage
+  );
+
+const paginatedMentors =
+  filteredMentors.slice(
+    (mentorPage - 1) *
+      mentorsPerPage,
+    mentorPage *
+      mentorsPerPage
+  );
 
   /* =======================================================
      EXPORT
