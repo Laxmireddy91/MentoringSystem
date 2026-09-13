@@ -167,32 +167,32 @@ async function editAcademicRecord(req, res, next) {
 */
 
 function cleanStudentPayload(body = {}) {
-  const allowed = [
-    "usn",
-    "name",
-    "dept",
-    "year",
-    "mentor",
-    "cie1",
-    "cie2",
-    "cie3",
-    "final",
-    "set",
-    "total",
-    "grade",
-    "backlog",
-    "phone",
-    "subjects",
-    "marksUpdatedBy",
-    "marksUpdatedAt",
-    "sgpa",
-    "cgpa",
-    "onlineCoursesAttended",
-    "totalMarks",
-    "percentage",
-    "mentorshipRecords",
-    "backlogRecords",
-  ];
+ const allowed = [
+  "usn",
+  "name",
+  "dept",
+  "year",
+  "mentorId",
+  "cie1",
+  "cie2",
+  "cie3",
+  "final",
+  "set",
+  "total",
+  "grade",
+  "backlog",
+  "phone",
+  "subjects",
+  "marksUpdatedBy",
+  "marksUpdatedAt",
+  "sgpa",
+  "cgpa",
+  "onlineCoursesAttended",
+  "totalMarks",
+  "percentage",
+  "mentorshipRecords",
+  "backlogRecords",
+];
 
   const payload = {};
 
@@ -282,52 +282,87 @@ async function buildProfiles(
   |--------------------------------------------------------------------------
   */
 
-  const mentorNames = [
-    ...new Set(
-      visibleStudents
-        .map(
-          (student) =>
-            student.mentor
-        )
-        .filter(Boolean)
-    ),
-  ];
+/*
+|--------------------------------------------------------------------------
+| FIND MENTOR USING mentorId
+|--------------------------------------------------------------------------
+|
+| Student.mentorId -> Mentor._id
+|
+| Do NOT use Student.mentor name matching.
+|
+*/
 
-  if (mentorNames.length) {
-    const mentorUsers =
-      await User.find({
-        role: "mentor",
-        name: {
-          $in: mentorNames,
-        },
-      })
-        .select(
-  "_id name email phone department designation semester usn"
-)
-        .lean();
+const mentorIds = [
+  ...new Set(
+    visibleStudents
+      .map((student) =>
+        student.mentorId
+          ? String(student.mentorId)
+          : null
+      )
+      .filter(Boolean)
+  ),
+];
 
-    if (mentorUsers.length) {
-      const mentor =
-        mentorUsers[0];
+if (mentorIds.length) {
+  const mentorProfile =
+    await Mentor.findOne({
+      _id: mentorIds[0],
+    }).lean();
 
-   profiles.mentor = {
-  id: mentor._id.toString(),
-  user: mentor._id.toString(),
+  if (mentorProfile) {
+    const mentorUser =
+      mentorProfile.user
+        ? await User.findById(
+            mentorProfile.user
+          )
+            .select(
+              "_id name email phone department designation semester usn"
+            )
+            .lean()
+        : null;
 
-  name: mentor.name,
-  email: mentor.email,
-  phone: mentor.phone || "",
-  department: mentor.department || "",
-  designation:
-    mentor.designation ||
-    "Mentor",
-  semester:
-    mentor.semester || "",
-  usn: mentor.usn || "",
-};
-    }
+    profiles.mentor = {
+      id: mentorProfile._id.toString(),
+
+      user:
+        mentorUser?._id?.toString() ||
+        mentorProfile.user?.toString() ||
+        "",
+
+      name:
+        mentorUser?.name ||
+        mentorProfile.name ||
+        "",
+
+      email:
+        mentorUser?.email ||
+        mentorProfile.email ||
+        "",
+
+      phone:
+        mentorUser?.phone ||
+        "",
+
+      department:
+        mentorUser?.department ||
+        "",
+
+      designation:
+        mentorUser?.designation ||
+        "Mentor",
+
+      semester:
+        mentorUser?.semester ||
+        "",
+
+      usn:
+        mentorUser?.usn ||
+        "",
+    };
   }
-
+}
 
   /*
   |--------------------------------------------------------------------------
@@ -482,42 +517,45 @@ router.get(
             }).lean();
         }
       } else if (
-        user.role === "mentor"
-      ) {
-        // Match students to the signed-in mentor using the mentor name
-        // as well as the linked Mentor profile. This keeps document access
-        // working even when older student records stored a slightly
-        // different mentor label.
-        const mentorProfile =
-          await Mentor.findOne({
-            $or: [
-              { user: user._id },
-              { email: user.email },
-              { name: user.name },
-            ],
-          })
-            .select("_id name email")
-            .lean();
+  user.role === "mentor"
+) {
+  /*
+  |--------------------------------------------------------------------------
+  | FIND SIGNED-IN MENTOR PROFILE
+  |--------------------------------------------------------------------------
+  */
 
-        const mentorNames = [
-          user.name,
-          mentorProfile?.name,
-        ].filter(Boolean);
+  const mentorProfile =
+    await Mentor.findOne({
+      user: user._id,
+    })
+      .select("_id name email user")
+      .lean();
 
-        const mentorQuery = [
-          { mentor: { $in: mentorNames } },
-        ];
+  if (!mentorProfile) {
+    return res.status(404).json({
+      success: false,
+      message:
+        "Mentor profile not found",
+    });
+  }
 
-        if (mentorProfile?._id) {
-          mentorQuery.push({ mentorId: mentorProfile._id });
-        }
+  /*
+  |--------------------------------------------------------------------------
+  | FIND ONLY STUDENTS ASSIGNED THROUGH mentorId
+  |--------------------------------------------------------------------------
+  |
+  | IMPORTANT:
+  | Do NOT use student.mentor or mentor.name.
+  |
+  | Student.mentorId -> Mentor._id
+  |
+  */
 
-        // Some existing records use mentorId while newer records use the
-        // mentor name, so support both forms.
-        students =
-          await Student.find({
-            $or: mentorQuery,
-          }).lean();
+  students =
+    await Student.find({
+      mentorId: mentorProfile._id,
+    }).lean();
       } else if (
         user.role === "hod"
       ) {
@@ -538,24 +576,33 @@ router.get(
       */
 
       let mentors;
+if (user.role === "student") {
+  /*
+  |--------------------------------------------------------------------------
+  | FIND ASSIGNED MENTOR USING mentorId
+  |--------------------------------------------------------------------------
+  */
 
-      if (user.role === "student") {
-        const mentorNames =
-          students
-            .map(
-              (student) =>
-                student.mentor
-            )
-            .filter(Boolean);
+  const mentorIds = [
+    ...new Set(
+      students
+        .map((student) =>
+          student.mentorId
+            ? String(student.mentorId)
+            : null
+        )
+        .filter(Boolean)
+    ),
+  ];
 
-        mentors =
-          mentorNames.length
-            ? await Mentor.find({
-                name: {
-                  $in: mentorNames,
-                },
-              }).lean()
-            : [];
+  mentors =
+    mentorIds.length
+      ? await Mentor.find({
+          _id: {
+            $in: mentorIds,
+          },
+        }).lean()
+      : [];
       } else if (
         user.role === "mentor"
       ) {
@@ -581,29 +628,14 @@ router.get(
           }).select("_id");
 
         mentors =
-          await Mentor.find({
-            $or: [
-              {
-                user: {
-                  $in:
-                    departmentMentors.map(
-                      (x) => x._id
-                    ),
-                },
-              },
-              {
-                name: {
-                  $in:
-                    students
-                      .map(
-                        (x) =>
-                          x.mentor
-                      )
-                      .filter(Boolean),
-                },
-              },
-            ],
-          }).lean();
+  await Mentor.find({
+    user: {
+      $in:
+        departmentMentors.map(
+          (x) => x._id
+        ),
+    },
+  }).lean();
       } else {
         mentors =
           await Mentor.find().lean();
@@ -1080,15 +1112,19 @@ router.post(
               "USN already exists",
           });
       }
+      if (req.user.role === "mentor") {
+  const mentor = await Mentor.findOne({
+    user: req.user._id,
+  });
 
-      if (
-        req.user.role ===
-        "mentor"
-      ) {
-        payload.mentor =
-          req.user.name;
-      }
+  if (!mentor) {
+    return res.status(404).json({
+      message: "Mentor profile not found",
+    });
+  }
 
+  payload.mentorId = mentor._id;
+}
       const student =
         await Student.create(
           payload
@@ -1122,14 +1158,19 @@ router.put(
           req.body
         );
 
-      if (
-        req.user.role ===
-        "mentor"
-      ) {
-        payload.mentor =
-          req.user.name;
-      }
+      if (req.user.role === "mentor") {
+  const mentor = await Mentor.findOne({
+    user: req.user._id,
+  });
 
+  if (!mentor) {
+    return res.status(404).json({
+      message: "Mentor profile not found",
+    });
+  }
+
+  payload.mentorId = mentor._id;
+}
       const student =
         await Student.findByIdAndUpdate(
           getId(req),
@@ -1231,7 +1272,6 @@ router.put(
         usn: requestedUsn,
         dept: String(req.body.dept ?? student.dept ?? "").trim(),
         year: String(req.body.year ?? student.year ?? "").trim(),
-        mentor: String(req.body.mentor ?? student.mentor ?? "").trim(),
         subjects: normalizedSubjects,
         total: average,
         totalMarks,
