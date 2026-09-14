@@ -321,8 +321,104 @@ const mentorsPerPage = 10;
   const [modal, setModal] =
     useState(null);
 
-  const [help, setHelp] =
-    useState(false);
+const [help, setHelp] = useState(false);
+const [chatMessages, setChatMessages] = useState([
+  {
+    from: "bot",
+    text: "Hi! I'm MentorConnect Help. Ask me about the dashboard, reports, sessions, performance, achievements, notifications, or profile.",
+  },
+]);
+const [chatInput, setChatInput] = useState("");
+
+const faqAnswers = [
+  {
+    keywords: ["dashboard", "home", "overview"],
+    answer:
+      "The Dashboard gives you a quick overview of your academic information, sessions, notifications, performance, and other important updates.",
+  },
+  {
+    keywords: ["report", "reports"],
+    answer:
+      "Open Reports Centre to view or manage student reports and supporting documents. Students can upload certificates and achievements there.",
+  },
+  {
+    keywords: ["achievement", "certificate", "document", "upload"],
+    answer:
+      "You can upload certificates and achievement documents from Reports Centre. Multiple documents can be selected and uploaded together.",
+  },
+  {
+    keywords: ["session", "meeting", "mentor"],
+    answer:
+      "Sessions contain mentoring meeting information. Check the Sessions or Schedule section to view available mentoring session details.",
+  },
+  {
+    keywords: ["performance", "marks", "cie", "grade", "academic"],
+    answer:
+      "Performance and Academic sections show the student's academic progress, marks, subjects, and related performance information.",
+  },
+  {
+    keywords: ["notification", "notifications", "alert"],
+    answer:
+      "Notifications show important updates and messages related to your mentoring activities and academic information.",
+  },
+  {
+    keywords: ["profile", "personal", "details"],
+    answer:
+      "Open Profile to view or update the information available for your account.",
+  },
+  {
+    keywords: ["risk", "at risk"],
+    answer:
+      "The Student Risk Monitor uses rule-based analysis of academic information to identify students who may need additional attention.",
+  },
+  {
+    keywords: ["help", "what can you do", "faq"],
+    answer:
+      "I can answer common questions about Dashboard, Reports, Achievements, Sessions, Performance, Notifications, Profile, and Student Risk Monitor.",
+  },
+];
+
+const getFaqAnswer = (question) => {
+  const text = question.toLowerCase().trim();
+
+  if (!text) {
+    return "Please type a question first.";
+  }
+
+  const match = faqAnswers.find((faq) =>
+    faq.keywords.some((keyword) => text.includes(keyword))
+  );
+
+  if (match) {
+    return match.answer;
+  }
+
+  return "Sorry, I don't have an answer for that yet. Try asking about Dashboard, Reports, Achievements, Sessions, Performance, Notifications, Profile, or Risk Monitor.";
+};
+
+const sendChatMessage = () => {
+  const question = chatInput.trim();
+
+  if (!question) return;
+
+  const answer = getFaqAnswer(question);
+
+  setChatMessages((current) => [
+    ...current,
+    {
+      from: "user",
+      text: question,
+    },
+    {
+      from: "bot",
+      text: answer,
+    },
+  ]);
+
+  setChatInput("");
+};
+
+
 
   const [loading, setLoading] =
     useState(true);
@@ -4628,51 +4724,103 @@ if (
           HELP MODAL
       ====================== */}
 
-      {help && (
-        <div
-          className="mc-overlay"
-          onClick={() =>
-            setHelp(false)
-          }
-        >
 
+      {help && (
+  <div
+    className="mc-overlay"
+    onClick={() => setHelp(false)}
+  >
+    <div
+      className="mc-modal mc-help-chat"
+      onClick={(event) => event.stopPropagation()}
+    >
+      <button
+        className="mc-close"
+        onClick={() => setHelp(false)}
+      >
+        ×
+      </button>
+
+      <h2>MentorConnect Help</h2>
+
+      <p>
+        Ask questions about the MentorConnect system.
+      </p>
+
+      <div className="mc-chat-messages">
+        {chatMessages.map((message, index) => (
           <div
-            className="mc-modal mc-help-modal"
-            onClick={(event) =>
-              event.stopPropagation()
+            key={index}
+            className={
+              message.from === "user"
+                ? "mc-chat-message user"
+                : "mc-chat-message bot"
             }
           >
+            <strong>
+              {message.from === "user" ? "You" : "Help"}
+            </strong>
 
-            <button
-              className="mc-close"
-              onClick={() =>
-                setHelp(false)
-              }
-            >
-              ×
-            </button>
-
-            <h2>
-              MentorConnect Help
-            </h2>
-
-            <p>
-              Use the role tabs to access each workspace. Data is loaded from the backend and stored in MongoDB. Changes made through the dashboard are synchronized with the backend.
-            </p>
-
-            <button
-              className="mc-primary"
-              onClick={() =>
-                setHelp(false)
-              }
-            >
-              Got it
-            </button>
-
+            <div>{message.text}</div>
           </div>
+        ))}
+      </div>
 
-        </div>
-      )}
+      <div className="mc-chat-input">
+        <input
+          type="text"
+          value={chatInput}
+          placeholder="Ask a question..."
+          onChange={(event) =>
+            setChatInput(event.target.value)
+          }
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              sendChatMessage();
+            }
+          }}
+        />
+
+        <button
+          type="button"
+          className="mc-primary"
+          onClick={sendChatMessage}
+        >
+          Send
+        </button>
+      </div>
+
+      <div className="mc-chat-suggestions">
+        <button
+          type="button"
+          onClick={() =>
+            setChatInput("How do I upload an achievement?")
+          }
+        >
+          Upload achievement
+        </button>
+
+        <button
+          type="button"
+          onClick={() =>
+            setChatInput("How can I check performance?")
+          }
+        >
+          Performance
+        </button>
+
+        <button
+          type="button"
+          onClick={() =>
+            setChatInput("What is Student Risk Monitor?")
+          }
+        >
+          Risk Monitor
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
 
       {/* =====================
