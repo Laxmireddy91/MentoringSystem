@@ -2879,7 +2879,7 @@ emergencyContact: item.emergencyContact || "",
                   const nextStudent = visible.find(
                     (student) => safeId(student) === event.target.value
                   );
-                  setSelectedId(event.target.value);
+                  setSelectedId(value);
                   setDraft(reportDraft(nextStudent));
                 }}
               >
@@ -3531,13 +3531,13 @@ emergencyContact: item.emergencyContact || "",
     const selectedStudent =
       visible.find((student) => safeId(student) === selectedId) || visible[0] || null;
     const [draft, setDraft] = useState(() => reportDraft(selectedStudent));
-    const [achievement, setAchievement] = useState({
-      title: "",
-      category: "",
-      date: "",
-      description: "",
-      file: null,
-    });
+  const [achievement, setAchievement] = useState({
+  title: "",
+  category: "",
+  date: "",
+  description: "",
+  files: [],
+});
     const [uploading, setUploading] = useState(false);
     const [mentorDocuments, setMentorDocuments] = useState([]);
 
@@ -3592,45 +3592,78 @@ emergencyContact: item.emergencyContact || "",
       await savePerformanceReport(safeId(selectedStudent), draft);
     };
 
-    const upload = async () => {
-      if (!selectedStudent) return;
-      if (!achievement.title.trim()) {
-        notify("Enter an achievement title");
-        return;
-      }
-      if (!achievement.file) {
-        notify("Select a certificate or document");
-        return;
-      }
-      if (achievement.file.size > 3 * 1024 * 1024) {
-        notify("Document must be 3 MB or smaller");
-        return;
-      }
+  const upload = async () => {
+  if (!selectedStudent) return;
 
-      try {
-        setUploading(true);
-        const fileData = await fileToDataUrl(achievement.file);
-        await api.students.uploadAchievement(safeId(selectedStudent), {
+  if (!achievement.title.trim()) {
+    notify("Enter an achievement title");
+    return;
+  }
+
+  if (!achievement.files.length) {
+    notify("Select at least one certificate or document");
+    return;
+  }
+
+  const oversizedFile = achievement.files.find(
+    (file) => file.size > 3 * 1024 * 1024
+  );
+
+  if (oversizedFile) {
+    notify(`${oversizedFile.name} is larger than 3 MB`);
+    return;
+  }
+
+  try {
+    setUploading(true);
+
+    for (const file of achievement.files) {
+      const fileData = await fileToDataUrl(file);
+
+      await api.students.uploadAchievement(
+        safeId(selectedStudent),
+        {
           title: achievement.title.trim(),
           category: achievement.category.trim(),
           date: achievement.date,
           description: achievement.description.trim(),
-          fileName: achievement.file.name,
-          mimeType: achievement.file.type,
+          fileName: file.name,
+          mimeType: file.type,
           fileData,
-        });
-        await refreshDashboard();
-        setAchievement({ title: "", category: "", date: "", description: "", file: null });
-        const input = document.getElementById("achievement-document-upload");
-        if (input) input.value = "";
-        notify("Achievement and document uploaded successfully");
-      } catch (error) {
-        console.error(error);
-        notify(error.message || "Unable to upload achievement");
-      } finally {
-        setUploading(false);
-      }
-    };
+        }
+      );
+    }
+
+    await refreshDashboard();
+
+    setAchievement({
+      title: "",
+      category: "",
+      date: "",
+      description: "",
+      files: [],
+    });
+
+    const input = document.getElementById(
+      "achievement-document-upload"
+    );
+
+    if (input) {
+      input.value = "";
+    }
+
+    notify(
+      `${achievement.files.length} document${
+        achievement.files.length > 1 ? "s" : ""
+      } uploaded successfully`
+    );
+  } catch (error) {
+    console.error(error);
+    notify(error.message || "Unable to upload achievements");
+  } finally {
+    setUploading(false);
+  }
+};
 
     const removeAchievement = async (achievementId) => {
       if (!selectedStudent || !achievementId) return;
@@ -3771,7 +3804,54 @@ emergencyContact: item.emergencyContact || "",
                 <label>Achievement / Certification Title<input value={achievement.title} onChange={(event) => setAchievement((current) => ({ ...current, title: event.target.value }))} placeholder="e.g. Best Project Award" /></label>
                 <label>Category<input value={achievement.category} onChange={(event) => setAchievement((current) => ({ ...current, category: event.target.value }))} placeholder="Award / Certification / Co-curricular" /></label>
                 <label>Date<input type="date" value={achievement.date} onChange={(event) => setAchievement((current) => ({ ...current, date: event.target.value }))} /></label>
-                <label>Certificate / Document<input id="achievement-document-upload" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,image/*" onChange={(event) => setAchievement((current) => ({ ...current, file: event.target.files?.[0] || null }))} /></label>
+<label>
+  Certificate / Documents
+
+  <input
+    id="achievement-document-upload"
+    type="file"
+    multiple
+    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,image/*"
+    onChange={(event) =>
+      setAchievement((current) => ({
+        ...current,
+        files: Array.from(event.target.files || []),
+      }))
+    }
+  />
+</label>
+
+
+{achievement.files.length > 0 && (
+  <div className="mc-selected-files">
+    <strong>
+      Selected files ({achievement.files.length})
+    </strong>
+
+    {achievement.files.map((file, index) => (
+      <div
+        key={`${file.name}-${index}`}
+        className="mc-selected-file"
+      >
+        <span>{file.name}</span>
+
+        <button
+          type="button"
+          onClick={() =>
+            setAchievement((current) => ({
+              ...current,
+              files: current.files.filter(
+                (_, fileIndex) => fileIndex !== index
+              ),
+            }))
+          }
+        >
+          Remove
+        </button>
+      </div>
+    ))}
+  </div>
+)}
                 <label className="full">Description<textarea value={achievement.description} onChange={(event) => setAchievement((current) => ({ ...current, description: event.target.value }))} placeholder="Brief description of the achievement" /></label>
               </div>
               <div className="mc-achievement-form-footer">

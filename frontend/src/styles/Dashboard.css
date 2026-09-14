@@ -3659,3 +3659,35 @@
   margin: 0;
   opacity: 0.72;
 }
+
+
+.mc-selected-files {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+}
+
+.mc-selected-files strong {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.mc-selected-file {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.mc-selected-file:last-child {
+  border-bottom: none;
+}
+
+.mc-selected-file button {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
