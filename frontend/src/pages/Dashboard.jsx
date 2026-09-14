@@ -307,6 +307,14 @@ export default function Dashboard({
   const [search, setSearch] =
     useState("");
 
+const [studentPage, setStudentPage] =
+  useState(1);
+
+const studentsPerPage = 10;
+const [mentorPage, setMentorPage] =
+  useState(1);
+
+const mentorsPerPage = 10;
   const [toast, setToast] =
     useState("");
 
@@ -673,14 +681,15 @@ const studentTabs = [
     "profile",
   ];
 
-  const hodTabs = [
-    "overview",
-    "mentors",
-    "student-performance",
-    "students",
-    "reports",
-    "profile",
-  ];
+const hodTabs = [
+  "overview",
+  "analytics",
+  "mentors",
+  "student-performance",
+  "students",
+  "reports",
+  "profile",
+];
 
 
 
@@ -712,6 +721,9 @@ const studentTabs = [
 
     sessions:
       "Mentoring Sessions",
+
+    analytics:
+    "Department Analytics",
 
     departments:
       "Department Analytics",
@@ -750,6 +762,22 @@ const studentTabs = [
           )
     );
 
+    const totalStudentPages =
+  Math.ceil(
+    filteredStudents.length /
+      studentsPerPage
+  );
+
+const paginatedStudents =
+  filteredStudents.slice(
+    (studentPage - 1) *
+      studentsPerPage,
+    studentPage *
+      studentsPerPage
+  );
+
+
+
   const filteredMentors =
     data.mentors.filter(
       (mentor) =>
@@ -760,6 +788,21 @@ const studentTabs = [
             search.toLowerCase()
           )
     );
+
+
+    const totalMentorPages =
+  Math.ceil(
+    filteredMentors.length /
+      mentorsPerPage
+  );
+
+const paginatedMentors =
+  filteredMentors.slice(
+    (mentorPage - 1) *
+      mentorsPerPage,
+    mentorPage *
+      mentorsPerPage
+  );
 
   /* =======================================================
      EXPORT
@@ -1906,14 +1949,14 @@ emergencyContact: item.emergencyContact || "",
 
         <div className="mc-grid-2">
                   {/* =====================================================
-            AI STUDENT RISK MONITOR
+            STUDENT RISK MONITOR
         ====================================================== */}
 
         {(role === "mentor" || role === "hod") && (
           <section className="mc-card mc-ai-risk-card">
 
             <CardTitle
-              title="🤖 AI Student Risk Monitor"
+            title="Student Risk Monitor - Rule-Based Analysis"
               sub="Early-warning analysis based on academic performance"
             />
 
@@ -2515,7 +2558,7 @@ emergencyContact: item.emergencyContact || "",
 
               <tbody>
 
-                {filteredStudents.map(
+                {paginatedStudents.map(
                   (student) => (
                     <tr
                       key={safeId(
@@ -2620,11 +2663,45 @@ emergencyContact: item.emergencyContact || "",
               </tbody>
 
             </table>
+          </div>
+        )}
 
+        {totalStudentPages > 1 && (
+          <div className="mc-pagination">
+            <button
+              className="mc-link"
+              disabled={studentPage === 1}
+              onClick={() =>
+                setStudentPage(
+                  (page) => page - 1
+                )
+              }
+            >
+              Previous
+            </button>
+
+            <span>
+              Page {studentPage} of {totalStudentPages}
+            </span>
+
+            <button
+              className="mc-link"
+              disabled={
+                studentPage === totalStudentPages
+              }
+              onClick={() =>
+                setStudentPage(
+                  (page) => page + 1
+                )
+              }
+            >
+              Next
+            </button>
           </div>
         )}
 
       </section>
+
     );
   }
 
@@ -3130,6 +3207,40 @@ emergencyContact: item.emergencyContact || "",
 
         </div>
 
+        {totalMentorPages > 1 && (
+          <div className="mc-pagination">
+            <button
+              className="mc-link"
+              disabled={mentorPage === 1}
+              onClick={() =>
+                setMentorPage(
+                  (page) => page - 1
+                )
+              }
+            >
+              Previous
+            </button>
+
+            <span>
+              Page {mentorPage} of {totalMentorPages}
+            </span>
+
+            <button
+              className="mc-link"
+              disabled={
+                mentorPage === totalMentorPages
+              }
+              onClick={() =>
+                setMentorPage(
+                  (page) => page + 1
+                )
+              }
+            >
+              Next
+            </button>
+          </div>
+        )}
+
       </section>
     );
   }
@@ -3198,8 +3309,10 @@ emergencyContact: item.emergencyContact || "",
 
         <div className="mc-mentor-cards">
 
-          {filteredMentors.map(
+          {paginatedMentors.map(
             (mentor) => (
+
+              
               <div
                 className="mc-mentor"
                 key={safeId(
@@ -3335,7 +3448,7 @@ emergencyContact: item.emergencyContact || "",
 
             <tbody>
 
-              {filteredMentors.map(
+              {paginatedMentors.map(
                 (mentor) => (
                   <tr
                     key={safeId(
@@ -3888,12 +4001,14 @@ emergencyContact: item.emergencyContact || "",
   function Analytics({
     type,
   }) {
-    const title =
-      type === "departments"
-        ? "Department Analytics"
-        : type === "faculty"
-        ? "Faculty Overview"
-        : "Student Performance";
+const title =
+  type === "analytics"
+    ? "Department Analytics"
+    : type === "departments"
+    ? "Department Analytics"
+    : type === "faculty"
+    ? "Faculty Overview"
+    : "Student Performance";
 
     const departments =
       analytics?.departments ||
@@ -3916,10 +4031,10 @@ emergencyContact: item.emergencyContact || "",
           sub="Live backend analytics and decision support"
         />
 
-        {type ===
-          "departments" &&
-          departments.length >
-            0 && (
+       {(type === "analytics" ||
+  type === "departments") &&
+  departments.length >
+    0 && (
             <div className="mc-table-wrap">
 
               <table>
@@ -4249,16 +4364,17 @@ emergencyContact: item.emergencyContact || "",
       return <Tasks />;
     }
 
-    if (
-      tab === "departments" ||
-      tab === "faculty"
-    ) {
-      return (
-        <Analytics
-          type={tab}
-        />
-      );
-    }
+if (
+  tab === "analytics" ||
+  tab === "departments" ||
+  tab === "faculty"
+) {
+  return (
+    <Analytics
+      type={tab}
+    />
+  );
+}
 
     return <Overview />;
   }

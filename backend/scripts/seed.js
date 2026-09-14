@@ -9,7 +9,6 @@ import Mentor from "../models/Mentor.js";
 import Session from "../models/Session.js";
 import Notification from "../models/Notification.js";
 import Task from "../models/Task.js";
-import Report from "../models/Report.js";
 
 const students = [
   [
@@ -69,7 +68,6 @@ await Promise.all([
   Session.deleteMany({}),
   Notification.deleteMany({}),
   Task.deleteMany({}),
-  Report.deleteMany({}),
 ]);
 
 const password = await bcrypt.hash(
@@ -309,31 +307,6 @@ await Task.insertMany([
  * Reports
  */
 
-await Report.insertMany([
-  {
-    title: "Department Performance Report",
-    category: "Academic",
-    date: "2026-08-18",
-    owner: "HOD",
-    status: "Ready",
-  },
-
-  {
-    title: "Mentoring Activity Report",
-    category: "Mentoring",
-    date: "2026-08-17",
-    owner: "Mentor Office",
-    status: "Ready",
-  },
-
-  {
-    title: "At-Risk Student Report",
-    category: "Student Support",
-    date: "2026-08-15",
-    owner: "Mentor Office",
-    status: "Review",
-  },
-]);
 
 console.log(
   "Seed complete."

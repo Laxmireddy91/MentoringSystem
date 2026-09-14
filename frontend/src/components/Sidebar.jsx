@@ -116,6 +116,12 @@ const roleMenus = {
     },
 
     {
+    key: "analytics",
+    label: "Department Analytics",
+    icon: "📊",
+  },
+
+    {
       key: "students",
       label: "Students",
       icon: "♙",
