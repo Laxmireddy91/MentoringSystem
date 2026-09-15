@@ -431,6 +431,12 @@ const sendChatMessage = () => {
   const [analytics, setAnalytics] =
     useState(null);
 
+const [leaderboardYear, setLeaderboardYear] =
+  useState("All");
+
+const [leaderboardSection, setLeaderboardSection] =
+  useState("All");
+
 const [riskStudents, setRiskStudents] =
   useState([]);
 
@@ -719,41 +725,75 @@ const [riskError, setRiskError] =
      COUNTS
   ======================================================= */
 
-  const counts = useMemo(() => {
-    const students =
-      data.students || [];
 
-    return {
-      students:
-        students.length,
 
-      mentors:
-        data.mentors.filter(
-          (mentor) =>
-            mentor.status ===
-            "Active"
-        ).length,
+  /* =======================================================
+   COUNTS
+======================================================= */
 
-      performance:
-        average(
-          students.map(
-            (student) =>
-              student.total
-          )
-        ),
+const counts = useMemo(() => {
+  const students = data.students || [];
+  const mentors = data.mentors || [];
 
-      backlog:
-        students.reduce(
-          (sum, student) =>
-            sum +
-            Number(
-              student.backlog || 0
-            ),
-          0
-        ),
-    };
-  }, [data]);
+  return {
+    students: students.length,
 
+    mentors: mentors.length,
+
+    performance: average(
+      students.map((student) => student.total)
+    ),
+
+    backlog: students.reduce(
+      (sum, student) =>
+        sum + Number(student.backlog || 0),
+      0
+    ),
+  };
+}, [data.students, data.mentors]);
+
+const leaderboardStudents = useMemo(() => {
+const students = data.students || [];
+
+  return students
+    .filter((student) => {
+      const yearMatch =
+        leaderboardYear === "All" ||
+        student.year === leaderboardYear;
+
+      const sectionMatch =
+        leaderboardSection === "All" ||
+        String(student.section || "").toUpperCase() ===
+          leaderboardSection;
+
+      return yearMatch && sectionMatch;
+    })
+    .map((student) => {
+      const total = Number(student.total || 0);
+
+      return {
+        ...student,
+        leaderboardScore: total,
+      };
+    })
+    .filter(
+      (student) =>
+        Number.isFinite(student.leaderboardScore)
+    )
+    .sort(
+      (a, b) =>
+        b.leaderboardScore -
+        a.leaderboardScore
+    )
+    .slice(0, 10);
+}, [
+  data.students,
+  leaderboardYear,
+  leaderboardSection,
+]);
+    
+
+   
   /* =======================================================
      TABS
   ======================================================= */
@@ -935,6 +975,7 @@ const paginatedMentors =
         dept:
           "Computer Science & Engineering",
         year: "3rd Year",
+        section: "A",
         mentor:
           role === "mentor"
             ? data.profiles?.mentor
@@ -981,6 +1022,7 @@ parentEmail: item.parentEmail || "",
 emergencyContact: item.emergencyContact || "",
         dept: item.dept,
         year: item.year,
+        section: item.section || "A",
         mentor: item.mentor,
         cie1:
           Number(
@@ -4287,6 +4329,148 @@ const title =
           )}
 
 
+        {/* =====================================================
+            DEPARTMENT-WISE STUDENT LEADERBOARD
+        ====================================================== */}
+
+        {type === "analytics" && (
+          <section
+            className="mc-card"
+            style={{ marginTop: "24px" }}
+          >
+            <CardTitle
+              title="Student Leaderboard"
+              sub="Top-performing students across different years and sections"
+            />
+
+            <div
+              className="mc-toolbar"
+              style={{ marginBottom: "20px" }}
+            >
+              <select
+                value={leaderboardYear}
+                onChange={(event) =>
+                  setLeaderboardYear(
+                    event.target.value
+                  )
+                }
+              >
+                <option value="All">
+                  All Years
+                </option>
+                <option value="1st Year">
+                  1st Year
+                </option>
+                <option value="2nd Year">
+                  2nd Year
+                </option>
+                <option value="3rd Year">
+                  3rd Year
+                </option>
+                <option value="4th Year">
+                  4th Year
+                </option>
+              </select>
+
+              <select
+                value={leaderboardSection}
+                onChange={(event) =>
+                  setLeaderboardSection(
+                    event.target.value
+                  )
+                }
+              >
+                <option value="All">
+                  All Sections
+                </option>
+                <option value="A">
+                  Section A
+                </option>
+                <option value="B">
+                  Section B
+                </option>
+                <option value="C">
+                  Section C
+                </option>
+              </select>
+            </div>
+
+            {leaderboardStudents.length === 0 ? (
+              <div className="mc-empty">
+                No student performance data
+                available for the selected
+                filters.
+              </div>
+            ) : (
+              <div className="mc-table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Rank</th>
+                      <th>Student</th>
+                      <th>USN</th>
+                      <th>Year</th>
+                      <th>Section</th>
+                      <th>Total</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {leaderboardStudents.map(
+                      (student, index) => (
+                        <tr
+                          key={
+                            safeId(student) ||
+                            index
+                          }
+                        >
+                          <td>
+                            <strong>
+                              #{index + 1}
+                            </strong>
+                          </td>
+
+                          <td>
+                            {student.name ||
+                              "—"}
+                          </td>
+
+                          <td>
+                            {student.usn ||
+                              "—"}
+                          </td>
+
+                          <td>
+                            {student.year ||
+                              "—"}
+                          </td>
+
+                          <td>
+                            {student.section ||
+                              "—"}
+                          </td>
+
+                          <td>
+                            <strong>
+                              {
+                                student.leaderboardScore
+                              }
+                            </strong>
+                          </td>
+                        </tr>
+                      )
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        )}
+
+        <div className="mc-kpi-grid"></div>
+
+
+
         {type ===
           "faculty" &&
           faculty.length >
@@ -5240,6 +5424,12 @@ function Modal({
       "text",
     ],
 
+    [
+  "section",
+  "Section",
+  "section-select",
+],
+
  [
   "mentor",
   "Mentor",
@@ -5483,70 +5673,71 @@ function Modal({
 
       {label}
 
-      {type === "mentor-select" ? (
-        <select
-          value={item[key] ?? ""}
-          onChange={(event) =>
-            set(
-              key,
-              event.target.value
-            )
+   {type === "mentor-select" ? (
+  <select
+    value={item[key] ?? ""}
+    onChange={(event) =>
+      set(key, event.target.value)
+    }
+    required={key === "mentor"}
+  >
+    <option value="">
+      Select Mentor
+    </option>
+
+    {mentors
+      .filter(
+        (mentor) =>
+          mentor.status === "Active"
+      )
+      .map((mentor) => (
+        <option
+          key={
+            safeId(mentor) ||
+            mentor.name
           }
-          required={
-            key === "mentor"
-          }
+          value={mentor.name || ""}
         >
-          <option value="">
-            Select Mentor
-          </option>
-
-          {mentors
-  .filter(
-    (mentor) =>
-      mentor.status ===
-      "Active"
-  )
-  .map((mentor) => (
-              <option
-                key={
-                  safeId(mentor) ||
-                  mentor.name
-                }
-                value={
-                  mentor.name || ""
-                }
-              >
-                {mentor.name}
-              </option>
-            ))}
-        </select>
-      ) : (
-        <input
-          type={type}
-          value={
-            item[key] ??
-            ""
-          }
-          onChange={(event) =>
-            set(
-              key,
-              event.target.value
-            )
-          }
-          required={
-            [
-              "name",
-              "usn",
-              "title",
-              "date",
-              "course",
-            ].includes(
-              key
-            )
-          }
-        />
-      )}
-
+          {mentor.name}
+        </option>
+      ))}
+  </select>
+) : type === "section-select" ? (
+  <select
+    value={item[key] ?? "A"}
+    onChange={(event) =>
+      set(key, event.target.value)
+    }
+  >
+    <option value="A">
+      Section A
+    </option>
+    <option value="B">
+      Section B
+    </option>
+    <option value="C">
+      Section C
+    </option>
+  </select>
+) : (
+  <input
+    type={type}
+    value={item[key] ?? ""}
+    onChange={(event) =>
+      set(
+        key,
+        event.target.value
+      )
+    }
+    required={[
+      "name",
+      "usn",
+      "title",
+      "date",
+      "course",
+    ].includes(key)}
+  />
+)}
     </label>
   )
 )}

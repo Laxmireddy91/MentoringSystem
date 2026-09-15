@@ -109,13 +109,16 @@ const studentSchema = new mongoose.Schema(
       trim: true,
     },
 
-    year: {
-      type: String,
-      default: "3rd Year",
-      trim: true,
-    },
+year: { type: String, default: "3rd Year", trim: true },
 
-    mentor: {
+section: {
+  type: String,
+  enum: ["A", "B", "C"],
+  default: "A",
+  uppercase: true,
+  trim: true,
+},
+mentor: {
       type: String,
       default: "",
       trim: true,
