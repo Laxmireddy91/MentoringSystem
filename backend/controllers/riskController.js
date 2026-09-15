@@ -9,99 +9,122 @@ function calculateRisk(student) {
   let riskScore = 0;
   const reasons = [];
 
-const subjects = Array.isArray(student.subjects)
-  ? student.subjects
-  : [];
+  // subjects[] is the single source of truth
+  const subjects = Array.isArray(student.subjects)
+    ? student.subjects
+    : [];
 
-const backlogs = Number(student.backlog || 0);
+  const backlogs = Number(student.backlog || 0);
 
-const academicSubjects = subjects.filter((subject) => {
-  return (
-    Number(subject?.cie1 || 0) > 0 ||
-    Number(subject?.cie2 || 0) > 0 ||
-    Number(subject?.cie3 || 0) > 0 ||
-    Number(subject?.final || 0) > 0 ||
-    Number(subject?.set || 0) > 0 ||
-    Number(subject?.total || 0) > 0
-  );
-});
-const cie1 =
-  academicSubjects.length > 0
-    ? Number(
-        (
-          academicSubjects.reduce(
-            (sum, subject) =>
-              sum + Number(subject?.cie1 || 0),
-            0
-          ) / academicSubjects.length
-        ).toFixed(2)
-      )
-    : 0;
-const cie2 =
-  academicSubjects.length > 0
-    ? Number(
-        (
-          academicSubjects.reduce(
-            (sum, subject) =>
-              sum + Number(subject?.cie1 || 0),
-            0
-          ) / academicSubjects.length
-        ).toFixed(2)
-      )
-    : 0;
+  const academicSubjects = subjects.filter((subject) => {
+    return (
+      Number(subject?.cie1 || 0) > 0 ||
+      Number(subject?.cie2 || 0) > 0 ||
+      Number(subject?.cie3 || 0) > 0 ||
+      Number(subject?.final || 0) > 0 ||
+      Number(subject?.set || 0) > 0 ||
+      Number(subject?.total || 0) > 0
+    );
+  });
 
-const cie3 =
-  academicSubjects.length > 0
-    ? Number(
-        (
-          academicSubjects.reduce(
-            (sum, subject) =>
-              sum + Number(subject?.cie1 || 0),
-            0
-          ) / academicSubjects.length
-        ).toFixed(2)
-      )
-    : 0;
-  const total =
-  academicSubjects.length > 0
-    ? Number(
-        (
-          academicSubjects.reduce(
-            (sum, subject) =>
-              sum + Number(subject?.cie1 || 0),
-            0
-          ) / academicSubjects.length
-        ).toFixed(2)
-      )
-    : 0;
-    const final =
-  academicSubjects.length > 0
-    ? Number(
-        (
-          academicSubjects.reduce(
-            (sum, subject) =>
-              sum + Number(subject?.cie1 || 0),
-            0
-          ) / academicSubjects.length
-        ).toFixed(2)
-      )
-    : 0;
   const hasAcademicData =
-  academicSubjects.length > 0;
+    academicSubjects.length > 0;
 
+  /*
+   * No academic data and no backlogs
+   */
   if (!hasAcademicData && backlogs === 0) {
-  return {
-    riskScore: 0,
-    level: "Low",
-    color: "green",
-    reasons: [
-      "No academic performance data has been entered yet."
-    ],
-    recommendation:
-      "Enter the student's academic records to begin risk analysis.",
-    cieAverage: 0,
-  };
-}
+    return {
+      riskScore: 0,
+      level: "Low",
+      color: "green",
+      reasons: [
+        "No academic performance data has been entered yet.",
+      ],
+      recommendation:
+        "Enter the student's academic records to begin risk analysis.",
+      cieAverage: 0,
+    };
+  }
+
+  /*
+   * Calculate average CIE1
+   */
+  const cie1 = academicSubjects.length
+    ? Number(
+        (
+          academicSubjects.reduce(
+            (sum, subject) =>
+              sum + Number(subject?.cie1 || 0),
+            0
+          ) / academicSubjects.length
+        ).toFixed(2)
+      )
+    : 0;
+
+  /*
+   * Calculate average CIE2
+   */
+  const cie2 = academicSubjects.length
+    ? Number(
+        (
+          academicSubjects.reduce(
+            (sum, subject) =>
+              sum + Number(subject?.cie2 || 0),
+            0
+          ) / academicSubjects.length
+        ).toFixed(2)
+      )
+    : 0;
+
+  /*
+   * Calculate average CIE3
+   */
+  const cie3 = academicSubjects.length
+    ? Number(
+        (
+          academicSubjects.reduce(
+            (sum, subject) =>
+              sum + Number(subject?.cie3 || 0),
+            0
+          ) / academicSubjects.length
+        ).toFixed(2)
+      )
+    : 0;
+
+  /*
+   * Overall subject-total average
+   *
+   * IMPORTANT:
+   * Read from subjects[].total.
+   * Do NOT use student.total.
+   */
+  const total = academicSubjects.length
+    ? Number(
+        (
+          academicSubjects.reduce(
+            (sum, subject) =>
+              sum + Number(subject?.total || 0),
+            0
+          ) / academicSubjects.length
+        ).toFixed(2)
+      )
+    : 0;
+
+  /*
+   * Average final examination marks
+   */
+  const finalMark = academicSubjects.length
+    ? Number(
+        (
+          academicSubjects.reduce(
+            (sum, subject) =>
+              sum + Number(subject?.final || 0),
+            0
+          ) / academicSubjects.length
+        ).toFixed(2)
+      )
+    : 0;
 
   /*
    * Average CIE performance
@@ -194,7 +217,7 @@ const cie3 =
   }
 
   /*
-   * Keep score between 0 and 100.
+   * Keep score between 0 and 100
    */
   riskScore = Math.min(
     Math.max(riskScore, 0),
@@ -202,7 +225,7 @@ const cie3 =
   );
 
   /*
-   * Determine risk level.
+   * Determine risk level
    */
   let level = "Low";
   let color = "green";
@@ -216,7 +239,7 @@ const cie3 =
   }
 
   /*
-   * Positive message when no risk factors exist.
+   * Positive message when no risk factors exist
    */
   if (reasons.length === 0) {
     reasons.push(
@@ -225,7 +248,7 @@ const cie3 =
   }
 
   /*
-   * Recommended mentor intervention.
+   * Recommended mentor intervention
    */
   let recommendation =
     "Continue regular mentoring and monitor academic progress.";
@@ -249,7 +272,6 @@ const cie3 =
     ),
   };
 }
-
 
 /*
  * Analyze one student
