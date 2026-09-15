@@ -8,6 +8,8 @@ import {
   useNavigate,
 } from "react-router-dom";
 
+import JSZip from "jszip";
+
 import Sidebar from "../components/Sidebar";
 import Messages from "../components/Messages";
 import api from "../api";
@@ -4874,34 +4876,191 @@ function ReportSection({ title, description, children }) {
   );
 }
 
-function AchievementList({ achievements = [], onDelete, readOnly = false }) {
+function AchievementList({
+  achievements = [],
+  onDelete,
+  readOnly = false,
+}) {
+  const [downloading, setDownloading] = useState(false);
+
   if (!achievements.length) {
     return null;
   }
 
+  const downloadBundle = async () => {
+    try {
+      setDownloading(true);
+
+      const zip = new JSZip();
+
+      let addedFiles = 0;
+
+      for (let index = 0; index < achievements.length; index++) {
+        const item = achievements[index];
+
+        if (!item.filePath) {
+          continue;
+        }
+
+        const url = assetUrl(item.filePath);
+
+        if (!url) {
+          continue;
+        }
+
+        const response = await fetch(url);
+
+        if (!response.ok) {
+          console.error(
+            `Unable to download ${item.fileName || "document"}`
+          );
+          continue;
+        }
+
+        const blob = await response.blob();
+
+        const originalName =
+          item.fileName ||
+          `achievement-document-${index + 1}`;
+
+        zip.file(originalName, blob);
+
+        addedFiles++;
+      }
+
+      if (!addedFiles) {
+     alert("No downloadable documents found");
+        return;
+      }
+
+      const zipBlob = await zip.generateAsync({
+        type: "blob",
+      });
+
+      const downloadUrl =
+        window.URL.createObjectURL(zipBlob);
+
+      const link = document.createElement("a");
+
+      link.href = downloadUrl;
+      link.download = "achievement-certificates.zip";
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      console.error(
+        "Achievement bundle error:",
+        error
+      );
+
+      alert(
+        "Unable to create the achievement bundle."
+      );
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   return (
     <div className="mc-achievement-list">
+
+      <div className="mc-achievement-bundle-header">
+        <div>
+          <strong>
+            Uploaded Achievements
+          </strong>
+
+          <small>
+            {achievements.length} document
+            {achievements.length === 1 ? "" : "s"}
+          </small>
+        </div>
+
+        <button
+          type="button"
+          className="mc-primary"
+          onClick={downloadBundle}
+          disabled={downloading}
+        >
+          {downloading
+            ? "Creating ZIP..."
+            : "Download All (.zip)"}
+        </button>
+      </div>
+
       {achievements.map((item, index) => {
-        const id = safeId(item) || index;
-        const url = assetUrl(item.filePath);
+        const id =
+          safeId(item) || index;
+
+        const url =
+          assetUrl(item.filePath);
+
         return (
-          <article className="mc-achievement-item" key={id}>
+          <article
+            className="mc-achievement-item"
+            key={id}
+          >
             <div className="mc-achievement-main">
-              <div className="mc-achievement-icon">★</div>
+
               <div>
-                <h4>{item.title || "Untitled achievement"}</h4>
-                <div className="mc-achievement-meta">
-                  <span>{item.category || "Achievement"}</span>
-                  <span>{item.date || "Date not set"}</span>
-                  {item.fileName && <span>{item.fileName}</span>}
-                </div>
-                {item.description && <p>{item.description}</p>}
+                <strong>
+                  {item.title ||
+                    "Achievement"}
+                </strong>
+
+                {item.category && (
+                  <span className="mc-pill">
+                    {item.category}
+                  </span>
+                )}
               </div>
+
+              {item.date && (
+                <small>
+                  {item.date}
+                </small>
+              )}
+
+              {item.fileName && (
+                <small>
+                  📎 {item.fileName}
+                </small>
+              )}
+
+              {item.description && (
+                <p>
+                  {item.description}
+                </p>
+              )}
             </div>
+
             {url && (
               <div className="mc-achievement-actions">
-                <a className="mc-outline-btn" href={url} target="_blank" rel="noreferrer">Open Document</a>
-                {!readOnly && onDelete && <button className="mc-danger-link" onClick={() => onDelete(id)}>Remove</button>}
+
+                <a
+                  className="mc-outline-btn"
+                  href={url}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Open Document
+                </a>
+
+                {!readOnly &&
+                  onDelete && (
+                    <button
+                      className="mc-danger-link"
+                      onClick={() =>
+                        onDelete(id)
+                      }
+                    >
+                      Remove
+                    </button>
+                  )}
+
               </div>
             )}
           </article>
