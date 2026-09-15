@@ -661,6 +661,7 @@ const studentTabs = [
   "messages",
   "tasks",
   "profile",
+  "security",
 ];
 
   const mentorTabs = [
@@ -671,6 +672,7 @@ const studentTabs = [
     "messages",
     "reports",
     "profile",
+    "security",
   ];
 
   const hodTabs = [
@@ -680,6 +682,7 @@ const studentTabs = [
     "students",
     "reports",
     "profile",
+    "security",
   ];
 
 
@@ -706,6 +709,8 @@ const studentTabs = [
         : "Student Management",
 
     mentors: "Mentor Data",
+
+    security: "Security & 2FA",
 
     performance:
       "Performance Report",
@@ -2641,7 +2646,7 @@ emergencyContact: item.emergencyContact || "",
   ======================================================= */
 
   function Performance() {
-    const editable = role === "student" || role === "mentor" || role === "hod";
+    const editable = role === "mentor" || role === "hod";
 
     const visible = role === "student"
       ? data.students.filter(
@@ -2816,6 +2821,8 @@ emergencyContact: item.emergencyContact || "",
           </div>
         )}
 
+        {!editable && <div className="mc-security-notice">🔒 Academic records are read-only for students. Only Mentors and HOD can update marks.</div>}
+        <fieldset disabled={!editable} className={!editable ? "mc-readonly-fieldset" : ""}>
         <div className="mc-report-identity-grid editable-identity">
           <label>
             <span>Student</span>
@@ -3006,6 +3013,7 @@ emergencyContact: item.emergencyContact || "",
             </table>
           </div>
         </ReportSection>
+        </fieldset>
 
       </section>
     );
@@ -3496,16 +3504,13 @@ emergencyContact: item.emergencyContact || "",
 
       try {
         setUploading(true);
-        const fileData = await fileToDataUrl(achievement.file);
-        await api.students.uploadAchievement(safeId(selectedStudent), {
-          title: achievement.title.trim(),
-          category: achievement.category.trim(),
-          date: achievement.date,
-          description: achievement.description.trim(),
-          fileName: achievement.file.name,
-          mimeType: achievement.file.type,
-          fileData,
-        });
+        const formData = new FormData();
+        formData.append("title", achievement.title.trim());
+        formData.append("category", achievement.category.trim());
+        formData.append("date", achievement.date);
+        formData.append("description", achievement.description.trim());
+        formData.append("file", achievement.file);
+        await api.students.uploadAchievement(safeId(selectedStudent), formData);
         await refreshDashboard();
         setAchievement({ title: "", category: "", date: "", description: "", file: null });
         const input = document.getElementById("achievement-document-upload");
@@ -4173,6 +4178,76 @@ emergencyContact: item.emergencyContact || "",
   }
 
   /* =======================================================
+     SECURITY & 2FA
+  ======================================================= */
+
+  function Security() {
+    const [enabled, setEnabled] = useState(Boolean(JSON.parse(localStorage.getItem("mentorconnect_user") || "{}")?.twoFactorEnabled));
+    const [code, setCode] = useState("");
+    const [devCode, setDevCode] = useState("");
+    const [securityMsg, setSecurityMsg] = useState("");
+    const [securityError, setSecurityError] = useState("");
+    const [busy, setBusy] = useState(false);
+
+    const start2FA = async () => {
+      setBusy(true); setSecurityMsg(""); setSecurityError(""); setDevCode("");
+      try {
+        const r = await api.auth.setup2FA();
+        setSecurityMsg(r.message || "OTP sent to your registered email.");
+        if (r.developmentCode) setDevCode(r.developmentCode);
+      } catch (e) { setSecurityError(e.message || "Unable to send OTP"); }
+      finally { setBusy(false); }
+    };
+
+    const confirm2FA = async () => {
+      setBusy(true); setSecurityMsg(""); setSecurityError("");
+      try {
+        const r = await api.auth.verify2FA(code);
+        setEnabled(true); setCode(""); setDevCode("");
+        setSecurityMsg(r.message || "Two-factor authentication enabled.");
+        const u = JSON.parse(localStorage.getItem("mentorconnect_user") || "{}");
+        u.twoFactorEnabled = true; localStorage.setItem("mentorconnect_user", JSON.stringify(u));
+      } catch (e) { setSecurityError(e.message || "Invalid OTP"); }
+      finally { setBusy(false); }
+    };
+
+    const turnOff = async () => {
+      setBusy(true); setSecurityMsg(""); setSecurityError("");
+      try {
+        const r = await api.auth.disable2FA();
+        setEnabled(false); setSecurityMsg(r.message || "Two-factor authentication disabled.");
+        const u = JSON.parse(localStorage.getItem("mentorconnect_user") || "{}");
+        u.twoFactorEnabled = false; localStorage.setItem("mentorconnect_user", JSON.stringify(u));
+      } catch (e) { setSecurityError(e.message || "Unable to disable 2FA"); }
+      finally { setBusy(false); }
+    };
+
+    return (
+      <section className="mc-card">
+        <CardTitle title="Security & Two-Factor Authentication" sub="Protect your Smart Mentoring System account with email OTP verification." />
+        {securityMsg && <div className="auth-success">{securityMsg}</div>}
+        {securityError && <div className="auth-error">{securityError}</div>}
+        <div className="mc-security-panel">
+          <div>
+            <h3>Email OTP Login</h3>
+            <p>When enabled, your password alone is not enough. A 6-digit OTP is sent to your registered email every time you sign in.</p>
+            <strong>{enabled ? "✓ 2FA is enabled" : "○ 2FA is currently disabled"}</strong>
+          </div>
+          {!enabled ? (
+            <div className="mc-security-actions">
+              <button className="mc-primary" onClick={start2FA} disabled={busy}>{busy ? "Sending OTP..." : "Enable 2FA"}</button>
+              {devCode && <div className="mc-dev-otp">Development OTP: <b>{devCode}</b></div>}
+              <div className="mc-otp-row"><input value={code} onChange={e => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="Enter 6-digit OTP" inputMode="numeric" /><button className="mc-primary" onClick={confirm2FA} disabled={busy || code.length !== 6}>Verify & Enable</button></div>
+            </div>
+          ) : (
+            <button className="mc-secondary" onClick={turnOff} disabled={busy}>{busy ? "Updating..." : "Disable 2FA"}</button>
+          )}
+        </div>
+      </section>
+    );
+  }
+
+  /* =======================================================
      RENDER SECTION
   ======================================================= */
 
@@ -4196,6 +4271,10 @@ emergencyContact: item.emergencyContact || "",
 
     if (tab === "profile") {
       return <Profile />;
+    }
+
+    if (tab === "security") {
+      return <Security />;
     }
 
     if (tab === "students") {

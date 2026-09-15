@@ -1,4 +1,5 @@
 import express from "express";
+import multer from "multer";
 import fs from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
@@ -10,6 +11,7 @@ import Task from "../models/Task.js";
 import Report from "../models/Report.js";
 import User from "../models/User.js";
 import { protect, allowRoles } from "../middleware/auth.js";
+import { writeAudit } from "../controllers/securityController.js";
 
 const router = express.Router();
 
@@ -79,7 +81,7 @@ function normalizeMentorship(records = []) {
     code: String(record?.code || ""),
     details: String(record?.details || ""),
     actionTaken: String(record?.actionTaken || ""),
-    studentSigned: Boolean(record?.studentSigned),
+    studentSigned: false,
     mentorSigned: Boolean(record?.mentorSigned),
   }));
 }
@@ -108,6 +110,25 @@ const achievementMimeTypes = new Set([
   "image/webp",
 ]);
 
+const achievementUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_ACHIEVEMENT_FILE_BYTES },
+  fileFilter: (req, file, cb) => {
+    if (!achievementMimeTypes.has(file.mimetype)) return cb(new Error("Unsupported document type"));
+    cb(null, true);
+  },
+});
+
+function hasValidFileSignature(buffer, mime) {
+  if (!buffer || buffer.length < 4) return false;
+  if (mime === "application/pdf") return buffer.subarray(0,4).toString() === "%PDF";
+  if (mime === "image/png") return buffer.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]));
+  if (mime === "image/jpeg") return buffer[0]===0xff && buffer[1]===0xd8 && buffer[2]===0xff;
+  if (mime === "image/webp") return buffer.subarray(0,4).toString()==="RIFF" && buffer.subarray(8,12).toString()==="WEBP";
+  if (["application/msword","application/vnd.openxmlformats-officedocument.wordprocessingml.document","application/vnd.ms-excel","application/vnd.openxmlformats-officedocument.spreadsheetml.sheet","application/vnd.ms-powerpoint","application/vnd.openxmlformats-officedocument.presentationml.presentation"].includes(mime)) return buffer.subarray(0,2).toString()==="PK" || buffer.subarray(0,8).toString("hex")==="d0cf11e0a1b11ae1";
+  return mime === "text/plain";
+}
+
 function safeAchievementFileName(name = "document") {
   return path.basename(String(name)).replace(/[^a-zA-Z0-9._-]/g, "_");
 }
@@ -132,27 +153,17 @@ async function canAccessStudent(req, student) {
 }
 
 async function editAcademicRecord(req, res, next) {
-  if (req.user.role === "mentor" || req.user.role === "hod") {
-    return next();
+  if (req.user.role !== "mentor" && req.user.role !== "hod") {
+    return res.status(403).json({ success: false, message: "Students can only view academic records" });
   }
-
-  if (req.user.role !== "student") {
-    return res.status(403).json({ message: "You do not have permission to edit academic records" });
-  }
-
-  const student = await Student.findById(getId(req));
-  if (!student) {
-    return res.status(404).json({ message: "Student not found" });
-  }
-
-  const ownsRecord =
-    (student.user && String(student.user) === String(req.user._id)) ||
-    (req.user.usn && student.usn && req.user.usn === student.usn);
-
-  if (!ownsRecord) {
-    return res.status(403).json({ message: "You can edit only your own academic record" });
-  }
-
+  await writeAudit({
+    actor: req.user._id,
+    action: "ACADEMIC_RECORD_EDIT",
+    targetType: "Student",
+    targetId: getId(req),
+    description: `${req.user.role} edited an academic record`,
+    ipAddress: req.ip,
+  });
   return next();
 }
 
@@ -1023,6 +1034,7 @@ router.put(
         );
       }
 
+      await writeAudit({ actor:req.user._id, action:"PROFILE_UPDATE", targetType:"User", targetId:req.user._id, description:"User updated profile", ipAddress:req.ip });
       return res.json({
         success: true,
         user:
@@ -1093,6 +1105,7 @@ router.post(
         await Student.create(
           payload
         );
+      await writeAudit({ actor:req.user._id, action:"STUDENT_CREATE", targetType:"Student", targetId:student._id, description:`${req.user.role} created a student record`, ipAddress:req.ip });
 
       return res
         .status(201)
@@ -1148,6 +1161,8 @@ router.put(
               "Student not found",
           });
       }
+
+      await writeAudit({ actor:req.user._id, action:"STUDENT_UPDATE", targetType:"Student", targetId:getId(req), description:`${req.user.role} updated a student record`, ipAddress:req.ip });
 
       return res.json({
         ...student.toObject(),
@@ -1312,82 +1327,29 @@ router.get(
 
 router.post(
   "/students/:id/achievements",
+  achievementUpload.single("file"),
   async (req, res, next) => {
     try {
       const student = await Student.findById(getId(req));
-
-      if (!(await canAccessStudent(req, student))) {
-        return res.status(403).json({ message: "You cannot update this student's achievements" });
-      }
-
-      const {
-        title = "",
-        category = "",
-        date = "",
-        description = "",
-        fileName = "",
-        mimeType = "",
-        fileData = "",
-      } = req.body || {};
-
-      if (!String(title).trim()) {
-        return res.status(400).json({ message: "Achievement title is required" });
-      }
-
-      if (!fileData || !String(fileData).includes(",")) {
-        return res.status(400).json({ message: "Certificate or document is required" });
-      }
-
-      if (!achievementMimeTypes.has(String(mimeType))) {
-        return res.status(400).json({ message: "Unsupported document type" });
-      }
-
-      const base64 = String(fileData).split(",", 2)[1];
-      const buffer = Buffer.from(base64, "base64");
-
-      if (!buffer.length) {
-        return res.status(400).json({ message: "Uploaded document is empty" });
-      }
-
-      if (buffer.length > MAX_ACHIEVEMENT_FILE_BYTES) {
-        return res.status(400).json({ message: "Document must be 3 MB or smaller" });
-      }
-
-      const uploadDir = path.join(process.cwd(), "uploads", "achievements");
-      await fs.mkdir(uploadDir, { recursive: true });
-
-      const safeName = safeAchievementFileName(fileName || "document");
-      const storedName = `${Date.now()}-${randomUUID()}-${safeName}`;
-      const destination = path.join(uploadDir, storedName);
-
-      await fs.writeFile(destination, buffer);
-
-      student.achievements.push({
-        title: String(title).trim(),
-        category: String(category).trim(),
-        date: String(date).trim(),
-        description: String(description).trim(),
-        fileName: safeName,
-        filePath: `/uploads/achievements/${storedName}`,
-        mimeType: String(mimeType),
-        fileSize: buffer.length,
-      });
-
+      if (!student) return res.status(404).json({ message: "Student not found" });
+      if (req.user.role === "student" || !(await canAccessStudent(req, student))) return res.status(403).json({ message: "Only mentors and HOD can update student achievements" });
+      const { title="", category="", date="", description="" } = req.body || {};
+      if (!String(title).trim()) return res.status(400).json({ message: "Achievement title is required" });
+      if (!req.file) return res.status(400).json({ message: "Certificate or document is required" });
+      const buffer=req.file.buffer;
+      if (buffer.length>MAX_ACHIEVEMENT_FILE_BYTES) return res.status(400).json({ message:"Document must be 3 MB or smaller" });
+      if (!hasValidFileSignature(buffer, req.file.mimetype)) return res.status(400).json({ message:"Uploaded file content does not match its declared type" });
+      const uploadDir=path.join(process.cwd(),"uploads","achievements");
+      await fs.mkdir(uploadDir,{recursive:true});
+      const safeName=safeAchievementFileName(req.file.originalname||"document");
+      const storedName=`${Date.now()}-${randomUUID()}-${safeName}`;
+      await fs.writeFile(path.join(uploadDir,storedName),buffer);
+      student.achievements.push({title:String(title).trim(),category:String(category).trim(),date:String(date).trim(),description:String(description).trim(),fileName:safeName,filePath:`/uploads/achievements/${storedName}`,mimeType:req.file.mimetype,fileSize:buffer.length});
       await student.save();
-
-      const achievement = student.achievements[student.achievements.length - 1];
-
-      return res.status(201).json({
-        ...student.toObject(),
-        id: student._id.toString(),
-        achievement: {
-          ...achievement.toObject(),
-          id: achievement._id.toString(),
-        },
-      });
-    } catch (error) {
-      next(error);
-    }
+      const achievement=student.achievements[student.achievements.length-1];
+      await writeAudit({ actor:req.user._id, action:"ACHIEVEMENT_UPLOAD", targetType:"Student", targetId:student._id, description:`${req.user.role} uploaded an achievement document`, ipAddress:req.ip });
+      return res.status(201).json({...student.toObject(),id:student._id.toString(),achievement:{...achievement.toObject(),id:achievement._id.toString()}});
+    } catch(error){ next(error); }
   }
 );
 
@@ -1398,8 +1360,8 @@ router.delete(
     try {
       const student = await Student.findById(getId(req));
 
-      if (!(await canAccessStudent(req, student))) {
-        return res.status(403).json({ message: "You cannot modify this student's achievements" });
+      if (req.user.role === "student" || !(await canAccessStudent(req, student))) {
+        return res.status(403).json({ message: "Only mentors and HOD can modify student achievements" });
       }
 
       if (!student) {
@@ -1424,6 +1386,7 @@ router.delete(
 
       achievement.deleteOne();
       await student.save();
+      await writeAudit({ actor:req.user._id, action:"ACHIEVEMENT_DELETE", targetType:"Student", targetId:student._id, description:`${req.user.role} deleted an achievement document`, ipAddress:req.ip });
 
       return res.json({
         ...student.toObject(),
@@ -1448,6 +1411,7 @@ router.delete(
     next
   ) => {
     try {
+      await writeAudit({ actor:req.user._id, action:"STUDENT_DELETE", targetType:"Student", targetId:getId(req), description:`${req.user.role} deleted a student record`, ipAddress:req.ip });
       const student =
         await Student.findByIdAndDelete(
           getId(req)

@@ -69,6 +69,18 @@ export async function sendMessage(req, res, next) {
           "name email role"
         );
 
+    const io = req.app.get("io");
+    const receiverRoom = `user_${receiver}`;
+    const receiverOnline = Boolean(io?.sockets?.adapter?.rooms?.get(receiverRoom)?.size);
+    if (receiverOnline) {
+      newMessage.status = "delivered";
+      await newMessage.save();
+      populatedMessage.status = "delivered";
+    }
+    if (io) {
+      io.to(receiverRoom).emit("receive_message", populatedMessage);
+    }
+
     return res.status(201).json({
       success: true,
       message: populatedMessage,

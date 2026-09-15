@@ -21,8 +21,11 @@ export default function Login() {
   const [loading, setLoading] =
     useState(false);
 
-  const [error, setError] =
-    useState("");
+  const [error, setError] = useState("");
+  const [twoFAChallenge, setTwoFAChallenge] = useState("");
+  const [twoFACode, setTwoFACode] = useState("");
+  const [otpMessage, setOtpMessage] = useState("");
+  const [loginMethod, setLoginMethod] = useState("direct");
 
 
   /* =========================================================
@@ -56,6 +59,7 @@ export default function Login() {
           email: email.trim(),
           password,
           role,
+          loginMethod,
         });
 
 
@@ -73,10 +77,16 @@ export default function Login() {
         );
       }
 
+      if (response.requires2FA) {
+        setTwoFAChallenge(response.challenge);
+        setOtpMessage(response.developmentCode ? `OTP sent to your email. Development OTP: ${response.developmentCode}` : "OTP sent to your registered email. It expires in 5 minutes.");
+        setError("");
+        setLoading(false);
+        return;
+      }
+
       if (!response.token) {
-        throw new Error(
-          "Login succeeded but no authentication token was received."
-        );
+        throw new Error("Login succeeded but no authentication token was received.");
       }
 
       if (!response.user) {
@@ -90,10 +100,8 @@ export default function Login() {
          SAVE AUTHENTICATION
       ===================================================== */
 
-      localStorage.setItem(
-        "mentorconnect_token",
-        response.token
-      );
+      localStorage.setItem("mentorconnect_token", response.token);
+      if (response.refreshToken) localStorage.setItem("mentorconnect_refresh_token", response.refreshToken);
 
       localStorage.setItem(
         "mentorconnect_user",
@@ -190,6 +198,18 @@ export default function Login() {
   };
 
 
+  const submitTwoFA = async (e) => {
+    e.preventDefault();
+    if (!/^\d{6}$/.test(twoFACode)) { setError("Enter the 6-digit OTP."); return; }
+    try {
+      const response = await api.auth.verifyLogin2FA(twoFAChallenge, twoFACode);
+      localStorage.setItem("mentorconnect_token", response.token);
+      if (response.refreshToken) localStorage.setItem("mentorconnect_refresh_token", response.refreshToken);
+      localStorage.setItem("mentorconnect_user", JSON.stringify(response.user));
+      navigate(`/${response.user.role}`, { replace: true });
+    } catch (err) { setError(err.message || "Invalid OTP"); }
+  };
+
   /* =========================================================
      NAVIGATION
   ========================================================= */
@@ -204,11 +224,7 @@ export default function Login() {
   };
 
 
-  const forgotPassword = () => {
-    setError(
-      "Please contact your administrator to reset your password."
-    );
-  };
+  const forgotPassword = () => navigate("/forgot-password");
 
 
   /* =========================================================
@@ -251,6 +267,39 @@ export default function Login() {
         </p>
 
 
+        {!twoFAChallenge && (
+          <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
+            <button
+              type="button"
+              onClick={() => setLoginMethod("direct")}
+              disabled={loading}
+              style={{ flex: 1, padding: "10px 12px", borderRadius: 10, border: loginMethod === "direct" ? "2px solid #4f46e5" : "1px solid #d1d5db", background: loginMethod === "direct" ? "#eef2ff" : "#fff", cursor: "pointer" }}
+            >
+              Direct Login
+            </button>
+            <button
+              type="button"
+              onClick={() => setLoginMethod("otp")}
+              disabled={loading}
+              style={{ flex: 1, padding: "10px 12px", borderRadius: 10, border: loginMethod === "otp" ? "2px solid #4f46e5" : "1px solid #d1d5db", background: loginMethod === "otp" ? "#eef2ff" : "#fff", cursor: "pointer" }}
+            >
+              OTP Login
+            </button>
+          </div>
+        )}
+
+        {twoFAChallenge && (
+          <div style={{ marginBottom: 20, padding: 16, borderRadius: 12, background: "#f5f7ff", border: "1px solid #dfe4ff" }}>
+            <h3 style={{ margin: "0 0 6px" }}>Two-Factor Authentication</h3>
+            <p style={{ margin: "0 0 12px", fontSize: 14 }}>Enter the 6-digit OTP sent to your registered email.</p>
+            {otpMessage && <div style={{ marginBottom: 12, fontSize: 13 }}>{otpMessage}</div>}
+            <form onSubmit={submitTwoFA}>
+              <input value={twoFACode} onChange={(e) => setTwoFACode(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="Enter 6-digit OTP" inputMode="numeric" autoComplete="one-time-code" maxLength={6} required />
+              <button type="submit" disabled={loading}>{loading ? "Verifying..." : "Verify OTP & Continue"}</button>
+            </form>
+          </div>
+        )}
+
         {/* Error */}
 
         {error && (
@@ -283,9 +332,9 @@ export default function Login() {
         )}
 
 
-        {/* Form */}
+        {/* Login form — hidden after OTP challenge is issued */}
 
-        <form
+        {!twoFAChallenge && <form
           onSubmit={submit}
         >
 
@@ -423,7 +472,7 @@ export default function Login() {
               : "Login"}
           </button>
 
-        </form>
+        </form>}
 
 
         {/* Register */}

@@ -67,6 +67,24 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+
+    emailVerified: { type: Boolean, default: false },
+    emailVerificationToken: { type: String, default: null },
+    emailVerificationExpires: { type: Date, default: null },
+
+    failedLoginAttempts: { type: Number, default: 0 },
+    lockedUntil: { type: Date, default: null },
+
+    passwordResetToken: { type: String, default: null },
+    passwordResetExpires: { type: Date, default: null },
+
+    twoFactorEnabled: { type: Boolean, default: false },
+    twoFactorCodeHash: { type: String, default: null },
+    twoFactorExpires: { type: Date, default: null },
+    twoFactorAttempts: { type: Number, default: 0 },
+
+    refreshTokenHash: { type: String, default: null },
+    refreshTokenExpires: { type: Date, default: null },
   },
   {
     timestamps: true,

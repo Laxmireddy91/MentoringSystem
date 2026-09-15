@@ -53,21 +53,32 @@ async function request(
   }
 
   if (!response.ok) {
-    if (response.status === 401) {
-      localStorage.removeItem(
-        "mentorconnect_token"
-      );
-
-      localStorage.removeItem(
-        "mentorconnect_user"
-      );
+    if (response.status === 401 && endpoint !== "/auth/refresh") {
+      const refreshToken = localStorage.getItem("mentorconnect_refresh_token");
+      if (refreshToken) {
+        try {
+          const refreshResponse = await fetch(`${API_URL}/auth/refresh`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ refreshToken }),
+          });
+          const refreshed = await refreshResponse.json();
+          if (refreshResponse.ok && refreshed.token) {
+            localStorage.setItem("mentorconnect_token", refreshed.token);
+            if (refreshed.user) localStorage.setItem("mentorconnect_user", JSON.stringify(refreshed.user));
+            headers.Authorization = `Bearer ${refreshed.token}`;
+            response = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
+            data = await response.json().catch(() => ({}));
+            if (response.ok) return data;
+          }
+        } catch {}
+      }
+      localStorage.removeItem("mentorconnect_token");
+      localStorage.removeItem("mentorconnect_refresh_token");
+      localStorage.removeItem("mentorconnect_user");
     }
 
-    throw new Error(
-      data.message ||
-        data.error ||
-        `Request failed with status ${response.status}`
-    );
+    throw new Error(data.message || data.error || `Request failed with status ${response.status}`);
   }
 
   return data;
@@ -175,8 +186,18 @@ const api = {
         userData
       ),
 
-    me: () =>
-      get("/auth/me"),
+    me: () => get("/auth/me"),
+    refresh: (refreshToken) => post("/auth/refresh", { refreshToken }),
+    forgotPassword: (email) => post("/auth/forgot-password", { email }),
+    resetPassword: (token, password) => post("/auth/reset-password", { token, password }),
+    verifyEmail: (token) => get(`/auth/verify-email?token=${encodeURIComponent(token)}`),
+    resendVerification: (email) => post("/auth/resend-verification", { email }),
+    verifyLogin2FA: (challenge, code) => post("/auth/login/2fa", { challenge, code }),
+    activity: () => get("/auth/activity"),
+    setup2FA: () => post("/auth/2fa/setup"),
+    verify2FA: (code) => post("/auth/2fa/verify", { code }),
+    disable2FA: () => post("/auth/2fa/disable"),
+    auditLogs: () => get("/auth/audit-logs"),
   },
 
 
@@ -258,14 +279,8 @@ const api = {
         `/workspace/students/${id}/achievements`
       ),
 
-    uploadAchievement: (
-      id,
-      achievement
-    ) =>
-      post(
-        `/workspace/students/${id}/achievements`,
-        achievement
-      ),
+    uploadAchievement: (id, achievement) =>
+      upload(`/workspace/students/${id}/achievements`, achievement),
 
     deleteAchievement: (
       id,

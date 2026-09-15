@@ -7,6 +7,7 @@ import {
 } from "../controllers/messageController.js";
 
 import { protect } from "../middleware/auth.js";
+import { validate, messageSchema } from "../validation.js";
 
 import {
   requireMessagePermission,
@@ -23,6 +24,7 @@ const router = express.Router();
 router.post(
   "/",
   protect,
+  validate(messageSchema),
   requireMessagePermission,
   sendMessage
 );

@@ -1,41 +1,24 @@
 import express from "express";
+import { register, login, me, verifyLogin2FA } from "../controllers/authController.js";
+import { refresh, logout, forgotPassword, resetPassword, verifyEmail, resendVerification, loginActivity, setup2FA, verify2FA, disable2FA, auditLogs, hodAccountRecovery } from "../controllers/securityController.js";
+import { protect, allowRoles } from "../middleware/auth.js";
+import { validate, loginSchema, registerSchema } from "../validation.js";
 
-import {
-  register,
-  login,
-  me,
-} from "../controllers/authController.js";
-
-import { auth } from "../middleware/auth.js";
-
-const router = express.Router();
-
-/* =========================================================
-   REGISTER
-========================================================= */
-
-router.post(
-  "/register",
-  register
-);
-
-/* =========================================================
-   LOGIN
-========================================================= */
-
-router.post(
-  "/login",
-  login
-);
-
-/* =========================================================
-   CURRENT USER
-========================================================= */
-
-router.get(
-  "/me",
-  auth,
-  me
-);
-
+const router=express.Router();
+router.post("/register",validate(registerSchema),register);
+router.post("/login",validate(loginSchema),login);
+router.post("/login/2fa",verifyLogin2FA);
+router.post("/refresh",refresh);
+router.post("/logout",protect,logout);
+router.post("/forgot-password",forgotPassword);
+router.post("/reset-password",resetPassword);
+router.get("/verify-email",verifyEmail);
+router.post("/resend-verification",resendVerification);
+router.get("/me",protect,me);
+router.get("/activity",protect,loginActivity);
+router.post("/2fa/setup",protect,setup2FA);
+router.post("/2fa/verify",protect,verify2FA);
+router.post("/2fa/disable",protect,disable2FA);
+router.get("/audit-logs",protect,allowRoles("hod"),auditLogs);
+router.post("/account-recovery",protect,allowRoles("hod"),hodAccountRecovery);
 export default router;

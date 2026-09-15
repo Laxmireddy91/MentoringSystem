@@ -70,10 +70,8 @@ export default function Register() {
       return;
     }
 
-    if (form.password.length < 6) {
-      setError(
-        "Password must contain at least 6 characters."
-      );
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,72}$/.test(form.password)) {
+      setError("Password must be 8+ characters and include uppercase, lowercase, number and special character.");
       return;
     }
 
@@ -150,10 +148,8 @@ export default function Register() {
        */
 
       if (response.token) {
-        localStorage.setItem(
-          "mentorconnect_token",
-          response.token
-        );
+        localStorage.setItem("mentorconnect_token", response.token);
+        if (response.refreshToken) localStorage.setItem("mentorconnect_refresh_token", response.refreshToken);
       }
 
       if (response.user) {
