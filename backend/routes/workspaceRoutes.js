@@ -8,6 +8,9 @@ import Session from "../models/Session.js";
 import Notification from "../models/Notification.js";
 import Task from "../models/Task.js";
 import User from "../models/User.js";
+import {
+  normalizeSubjects,
+} from "../utils/academicCalculations.js";
 
 import {
   createMentor,
@@ -31,52 +34,6 @@ const roleCanManageAcademic =
 | HELPERS
 |--------------------------------------------------------------------------
 */
-
-function gradeFromTotal(total) {
-  if (total <= 0) return "";
-  return total >= 40 ? "Pass" : "Fail";
-}
-
-function normalizeSubjects(subjects = []) {
-  return subjects.map((subject) => {
-    const cie1 = Number(subject?.cie1 || 0);
-    const cie2 = Number(subject?.cie2 || 0);
-    const cie3 = Number(subject?.cie3 || 0);
-    const beforeRvSee = Number(subject?.beforeRvSee || 0);
-    const afterRvSee = Number(subject?.afterRvSee || 0);
-    const finalMark = Number(subject?.final || 0);
-    const set = Number(subject?.set || 0);
-
-    const calculatedTotal = Math.round(
-      (cie1 + cie2 + cie3 + finalMark + set) / 5
-    );
-
-    const enteredTotal = Number(subject?.total);
-    const total = Number.isFinite(enteredTotal)
-      ? enteredTotal
-      : calculatedTotal;
-
-    const enteredGrade = String(subject?.grade || "").trim();
-    const normalizedGrade = ["Pass", "Fail"].includes(enteredGrade)
-      ? enteredGrade
-      : gradeFromTotal(total);
-
-    return {
-      _id: subject?._id,
-      code: String(subject?.code || "").trim(),
-      subject: String(subject?.subject || "Subject").trim(),
-      cie1,
-      cie2,
-      cie3,
-      beforeRvSee,
-      afterRvSee,
-      final: finalMark,
-      set,
-      total,
-      grade: normalizedGrade,
-    };
-  });
-}
 
 function normalizeMentorship(records = []) {
   return records.slice(0, 6).map((record) => ({
@@ -172,32 +129,23 @@ async function editAcademicRecord(req, res, next) {
 */
 
 function cleanStudentPayload(body = {}) {
- const allowed = [
-  "usn",
-  "name",
-  "dept",
-  "year",
-  "mentorId",
-  "cie1",
-  "cie2",
-  "cie3",
-  "final",
-  "set",
-  "total",
-  "grade",
-  "backlog",
-  "phone",
-  "subjects",
-  "marksUpdatedBy",
-  "marksUpdatedAt",
-  "sgpa",
-  "cgpa",
-  "onlineCoursesAttended",
-  "totalMarks",
-  "percentage",
-  "mentorshipRecords",
-  "backlogRecords",
-];
+  const allowed = [
+    "usn",
+    "name",
+    "dept",
+    "year",
+    "mentorId",
+    "backlog",
+    "phone",
+    "subjects",
+    "marksUpdatedBy",
+    "marksUpdatedAt",
+    "sgpa",
+    "cgpa",
+    "onlineCoursesAttended",
+    "mentorshipRecords",
+    "backlogRecords",
+  ];
 
   const payload = {};
 
@@ -208,22 +156,17 @@ function cleanStudentPayload(body = {}) {
   }
 
   if (payload.usn) {
-    payload.usn = String(
-      payload.usn
-    )
+    payload.usn = String(payload.usn)
       .trim()
       .toUpperCase();
   }
 
   if (payload.name) {
-    payload.name = String(
-      payload.name
-    ).trim();
+    payload.name = String(payload.name).trim();
   }
 
   return payload;
 }
-
 
 /*
 |--------------------------------------------------------------------------
@@ -376,35 +319,30 @@ if (mentorIds.length) {
   */
 
   if (!profiles.mentor) {
-    const mentorUser =
-      await User.findOne({
-        role: "mentor",
-      })
+  const mentorUser =
+    await User.findOne({
+      role: "mentor",
+    })
       .select(
-  "_id name email phone department designation semester usn"
-)
-        .lean();
+        "_id name email phone department designation semester usn"
+      )
+      .lean();
 
-    if (mentorUser) {
-      profiles.mentor = {
-  id: mentorUser._id.toString(),
-  user: mentorUser._id.toString(),
-
-  name: mentorUser.name,
-  email: mentorUser.email,
-  phone: mentorUser.phone || "",
-  department: mentorUser.department || "",
-  designation:
-    mentorUser.designation ||
-    "Mentor",
-  semester:
-    mentorUser.semester || "",
-  usn: mentorUser.usn || "",
-};
-   
-    }
+  if (mentorUser) {
+    profiles.mentor = {
+      id: mentorUser._id.toString(),
+      user: mentorUser._id.toString(),
+      name: mentorUser.name,
+      email: mentorUser.email,
+      phone: mentorUser.phone || "",
+      department: mentorUser.department || "",
+      designation:
+        mentorUser.designation || "Mentor",
+      semester: mentorUser.semester || "",
+      usn: mentorUser.usn || "",
+    };
   }
-
+}
 
   /*
   |--------------------------------------------------------------------------
@@ -608,20 +546,11 @@ if (user.role === "student") {
           },
         }).lean()
       : [];
-      } else if (
-        user.role === "mentor"
-      ) {
-        mentors =
-          await Mentor.find({
-            $or: [
-              {
-                user: user._id,
-              },
-              {
-                name: user.name,
-              },
-            ],
-          }).lean();
+      } 
+    else if (user.role === "mentor") {
+  mentors = await Mentor.find({
+    user: user._id,
+  }).lean();
       } else if (
         user.role === "hod"
       ) {
@@ -1144,10 +1073,35 @@ router.put(
   ) => {
     try {
       const payload =
-        cleanStudentPayload(
-          req.body
-        );
+  cleanStudentPayload(
+    req.body
+  );
 
+if (Array.isArray(payload.subjects)) {
+  payload.subjects =
+    normalizeSubjects(
+      payload.subjects
+    );
+
+  const average =
+    payload.subjects.length
+      ? Math.round(
+          payload.subjects.reduce(
+            (sum, subject) =>
+              sum + Number(subject.total || 0),
+            0
+          ) / payload.subjects.length
+        )
+      : 0;
+
+  payload.total = average;
+  payload.grade =
+    average >= 40
+      ? "Pass"
+      : average > 0
+        ? "Fail"
+        : "";
+}
       if (req.user.role === "mentor") {
   const mentor = await Mentor.findOne({
     user: req.user._id,
@@ -1171,12 +1125,12 @@ router.put(
           }
         );
 
-        if (saved?.user) {
+        if (student?.user) {
   await Notification.create({
     title: "Academic Marks Updated",
     text: `Your academic marks have been updated by ${req.user.name}.`,
     type: "academic",
-    user: saved.user,
+    user: student.user,
   });
 }
 
@@ -1246,26 +1200,19 @@ router.put(
           : []
       );
 
-      const rawTotalMarks = req.body.totalMarks;
-      const enteredTotalMarks =
-        rawTotalMarks === "" || rawTotalMarks === null || rawTotalMarks === undefined
-          ? NaN
-          : Number(rawTotalMarks);
-      const totalMarks = Number.isFinite(enteredTotalMarks)
-        ? enteredTotalMarks
-        : normalizedSubjects.reduce((sum, item) => sum + Number(item.total || 0), 0);
+      const totalMarks = normalizedSubjects.reduce(
+  (sum, item) => sum + Number(item.total || 0),
+  0
+);
 
-      const rawPercentage = req.body.percentage;
-      const enteredPercentage =
-        rawPercentage === "" || rawPercentage === null || rawPercentage === undefined
-          ? NaN
-          : Number(rawPercentage);
-      const percentage = Number.isFinite(enteredPercentage)
-        ? enteredPercentage
-        : normalizedSubjects.length
-          ? Number(((totalMarks / (normalizedSubjects.length * 100)) * 100).toFixed(2))
-          : 0;
-
+const percentage = normalizedSubjects.length
+  ? Number(
+      (
+        (totalMarks / (normalizedSubjects.length * 100)) *
+        100
+      ).toFixed(2)
+    )
+  : 0;
       const updates = {
         name: String(req.body.name ?? student.name).trim(),
         usn: requestedUsn,
@@ -1275,7 +1222,7 @@ router.put(
         total: average,
         totalMarks,
         percentage,
-        grade: gradeFromTotal(average),
+        grade: average >= 40 ? "Pass" : average > 0 ? "Fail" : "",
         backlog: normalizedBacklogs.filter(
           (record) => record.courseName.trim()
         ).length,
@@ -1539,93 +1486,48 @@ router.put(
   ) => {
     try {
       const subjects =
-        Array.isArray(
-          req.body.subjects
-        )
+        Array.isArray(req.body.subjects)
           ? req.body.subjects
           : [];
 
+      /*
+      ---------------------------------------------------------
+      NORMALIZE SUBJECTS
+      ---------------------------------------------------------
+
+      subjects[] is the single source of truth.
+
+      The calculation is handled by:
+      backend/utils/academicCalculations.js
+      ---------------------------------------------------------
+      */
+
       const normalizedSubjects =
-        subjects.map(
-          (subject) => {
-            const cie1 =
-              Number(
-                subject.cie1 ||
-                  0
-              );
+        normalizeSubjects(subjects);
 
-            const cie2 =
-              Number(
-                subject.cie2 ||
-                  0
-              );
-
-            const cie3 =
-              Number(
-                subject.cie3 ||
-                  0
-              );
-
-            const final =
-              Number(
-                subject.final ||
-                  0
-              );
-
-            const set =
-              Number(
-                subject.set ||
-                  0
-              );
-
-            const total =
-              Math.round(
-                (cie1 +
-                  cie2 +
-                  cie3 +
-                  final +
-                  set) /
-                  5
-              );
-
-            return {
-              _id:
-                subject._id,
-
-              subject:
-                subject.subject ||
-                "Subject",
-
-              cie1,
-              cie2,
-              cie3,
-              final,
-              set,
-              total,
-
-              grade:
-                gradeFromTotal(
-                  total
-                ),
-            };
-          }
-        );
+      /*
+      ---------------------------------------------------------
+      CALCULATE OVERALL AVERAGE
+      ---------------------------------------------------------
+      */
 
       const average =
         normalizedSubjects.length
           ? Math.round(
               normalizedSubjects.reduce(
-                (
-                  sum,
-                  subject
-                ) =>
-                  sum +
-                  subject.total,
+                (sum, subject) =>
+                  sum + Number(subject.total || 0),
                 0
               ) /
                 normalizedSubjects.length
             )
           : 0;
+
+      /*
+      ---------------------------------------------------------
+      UPDATE STUDENT
+      ---------------------------------------------------------
+      */
 
       const student =
         await Student.findByIdAndUpdate(
@@ -1635,13 +1537,25 @@ router.put(
               subjects:
                 normalizedSubjects,
 
+              /*
+              Legacy/derived field.
+              It is calculated from subjects[].
+              */
+
               total:
                 average,
 
+              /*
+              Grade is derived from the calculated
+              overall average.
+              */
+
               grade:
-                gradeFromTotal(
-                  average
-                ),
+                average >= 40
+                  ? "Pass"
+                  : average > 0
+                    ? "Fail"
+                    : "",
 
               marksUpdatedBy:
                 req.user.name,
@@ -1656,6 +1570,12 @@ router.put(
           }
         );
 
+      /*
+      ---------------------------------------------------------
+      STUDENT NOT FOUND
+      ---------------------------------------------------------
+      */
+
       if (!student) {
         return res
           .status(404)
@@ -1665,11 +1585,19 @@ router.put(
           });
       }
 
+      /*
+      ---------------------------------------------------------
+      RESPONSE
+      ---------------------------------------------------------
+      */
+
       return res.json({
         ...student.toObject(),
+
         id:
           student._id.toString(),
       });
+
     } catch (error) {
       next(error);
     }

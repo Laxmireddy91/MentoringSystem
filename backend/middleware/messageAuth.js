@@ -33,33 +33,8 @@ Names are not reliable identifiers because:
  * @param {String} receiverId - User._id of other user
  * @returns {Promise<Object>}
  */
-export async function canMessage(
-  currentUser,
-  receiverId
-) {
+export async function canMessage(currentUser, receiverId) {
   try {
-    console.log(
-      "========== MESSAGE AUTH DEBUG =========="
-    );
-    console.log(
-      "Current User ID:",
-      currentUser?._id
-    );
-    console.log(
-      "Current User Role:",
-      currentUser?.role
-    );
-    console.log(
-      "Receiver ID:",
-      receiverId
-    );
-
-    /*
-    -------------------------------------------------------
-    VALIDATE USER INFORMATION
-    -------------------------------------------------------
-    */
-
     if (!currentUser?._id || !receiverId) {
       return {
         allowed: false,
@@ -67,21 +42,8 @@ export async function canMessage(
       };
     }
 
-    /*
-    -------------------------------------------------------
-    LOAD RECEIVER USER
-    -------------------------------------------------------
-    */
-
-    const receiver = await User.findById(
-      receiverId
-    ).select(
+    const receiver = await User.findById(receiverId).select(
       "_id name email role active"
-    );
-
-    console.log(
-      "Receiver:",
-      receiver
     );
 
     if (!receiver) {
@@ -91,12 +53,6 @@ export async function canMessage(
       };
     }
 
-    /*
-    -------------------------------------------------------
-    CHECK RECEIVER ACCOUNT
-    -------------------------------------------------------
-    */
-
     if (receiver.active === false) {
       return {
         allowed: false,
@@ -104,16 +60,7 @@ export async function canMessage(
       };
     }
 
-    /*
-    -------------------------------------------------------
-    SAME USER CHECK
-    -------------------------------------------------------
-    */
-
-    if (
-      String(currentUser._id) ===
-      String(receiver._id)
-    ) {
+    if (String(currentUser._id) === String(receiver._id)) {
       return {
         allowed: false,
         reason: "You cannot message yourself",
@@ -130,80 +77,33 @@ export async function canMessage(
       currentUser.role === "student" &&
       receiver.role === "mentor"
     ) {
-      /*
-       * Find the Student profile belonging
-       * to the authenticated User.
-       */
-      const student =
-        await Student.findOne({
-          user: currentUser._id,
-        }).lean();
-
-      console.log(
-        "Student profile:",
-        student
-      );
+      const student = await Student.findOne({
+        user: currentUser._id,
+      }).lean();
 
       if (!student) {
         return {
           allowed: false,
-          reason:
-            "Student profile not found",
+          reason: "Student profile not found",
         };
       }
 
-      /*
-       * Student must have an assigned Mentor.
-       */
       if (!student.mentorId) {
         return {
           allowed: false,
-          reason:
-            "You do not have an assigned mentor",
+          reason: "No mentor is assigned to this student",
         };
       }
 
-      /*
-       * Find the Mentor profile belonging
-       * to the receiver User.
-       */
-      const mentor =
-        await Mentor.findOne({
-          user: receiver._id,
-        }).lean();
+      const mentor = await Mentor.findOne({
+        _id: student.mentorId,
+        user: receiver._id,
+      }).lean();
 
       if (!mentor) {
         return {
           allowed: false,
-          reason:
-            "Mentor profile not found",
-        };
-      }
-
-      console.log(
-        "Student mentorId:",
-        String(student.mentorId)
-      );
-
-      console.log(
-        "Receiver mentor _id:",
-        String(mentor._id)
-      );
-
-      /*
-       * THIS IS THE IMPORTANT CHECK.
-       *
-       * Student.mentorId must match
-       * Mentor._id.
-       */
-      if (
-        String(student.mentorId) !==
-        String(mentor._id)
-      ) {
-        return {
-          allowed: false,
-          reason:
-            "You can only message your assigned mentor",
+          reason: "You can only message your assigned mentor",
         };
       }
 
@@ -225,75 +125,35 @@ export async function canMessage(
       currentUser.role === "mentor" &&
       receiver.role === "student"
     ) {
-      /*
-       * Find the Mentor profile belonging
-       * to the authenticated User.
-       */
-      const mentor =
-        await Mentor.findOne({
-          user: currentUser._id,
-        }).lean();
+      const mentor = await Mentor.findOne({
+        user: currentUser._id,
+      }).lean();
 
       if (!mentor) {
         return {
           allowed: false,
-          reason:
-            "Mentor profile not found",
+          reason: "Mentor profile not found",
         };
       }
 
-      /*
-       * Find the Student profile belonging
-       * to the receiver User.
-       */
-      const student =
-        await Student.findOne({
-          user: receiver._id,
-        }).lean();
+      const student = await Student.findOne({
+        user: receiver._id,
+      }).lean();
 
       if (!student) {
         return {
           allowed: false,
-          reason:
-            "Student profile not found",
+          reason: "Student profile not found",
         };
       }
 
-      /*
-       * Student must have an assigned Mentor.
-       */
-      if (!student.mentorId) {
-        return {
-          allowed: false,
-          reason:
-            "This student does not have an assigned mentor",
-        };
-      }
-
-      console.log(
-        "Student mentorId:",
-        String(student.mentorId)
-      );
-
-      console.log(
-        "Current mentor _id:",
-        String(mentor._id)
-      );
-
-      /*
-       * THIS IS THE IMPORTANT CHECK.
-       *
-       * Student.mentorId must match
-       * the currently logged-in Mentor._id.
-       */
       if (
-        String(student.mentorId) !==
-        String(mentor._id)
+        !student.mentorId ||
+        String(student.mentorId) !== String(mentor._id)
       ) {
         return {
           allowed: false,
-          reason:
-            "You can only message your assigned students",
+          reason: "You can only message your assigned students",
         };
       }
 
@@ -305,89 +165,49 @@ export async function canMessage(
       };
     }
 
-    /*
-    =======================================================
-    OTHER ROLES
-    =======================================================
-    */
-
     return {
       allowed: false,
       reason:
         "Messaging is currently available only between assigned students and mentors",
     };
   } catch (error) {
-    console.error(
-      "❌ Message authorization error:",
-      error
-    );
+    console.error("❌ Message authorization error:", error);
 
     return {
       allowed: false,
-      reason:
-        "Unable to verify messaging permission",
+      reason: "Unable to verify messaging permission",
     };
   }
 }
-
-
-/*
-=========================================================
- EXPRESS MIDDLEWARE
-=========================================================
-*/
-
-export async function requireMessagePermission(
-  req,
-  res,
-  next
-) {
+export async function requireMessagePermission(req, res, next) {
   try {
-    const receiverId =
-      req.body?.receiver ||
-      req.params?.userId;
+    const receiverId = req.params.userId || req.body.receiverId;
 
     if (!receiverId) {
       return res.status(400).json({
         success: false,
-        message:
-          "Receiver user ID is required",
+        message: "Receiver ID is required",
       });
     }
 
-    const result =
-      await canMessage(
-        req.user,
-        receiverId
-      );
+    const result = await canMessage(req.user, receiverId);
 
     if (!result.allowed) {
       return res.status(403).json({
         success: false,
-        message:
-          result.reason ||
-          "You are not allowed to message this user",
+        message: result.reason,
       });
     }
 
-    /*
-     * Make the authorization result
-     * available to controllers.
-     */
-    req.messagePermission =
-      result;
+    req.messagePermission = result;
 
     next();
   } catch (error) {
-    console.error(
-      "❌ Message permission middleware error:",
-      error
-    );
+    console.error("❌ Message permission middleware error:", error);
 
     return res.status(500).json({
       success: false,
-      message:
-        "Unable to verify messaging permission",
+      message: "Unable to verify messaging permission",
     });
   }
 }
