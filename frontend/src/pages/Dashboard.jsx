@@ -3232,12 +3232,568 @@ emergencyContact: item.emergencyContact || "",
      SESSIONS
   ======================================================= */
 
-  function Sessions() {
-    const profile =
-      data.profiles?.[role] ||
-      {};
 
-    return (
+  /* =======================================================
+   SESSIONS
+======================================================= */
+
+function Sessions() {
+  const profile =
+    data.profiles?.[role] ||
+    {};
+
+  const API_BASE = (
+    import.meta.env.VITE_API_URL ||
+    "http://localhost:5000/api"
+  ).replace(/\/$/, "");
+  /* =======================================================
+     MENTOR AVAILABILITY STATE
+  ======================================================= */
+
+  const [availability, setAvailability] =
+    useState([]);
+
+  const [availabilityLoading, setAvailabilityLoading] =
+    useState(false);
+
+  const [newAvailability, setNewAvailability] =
+    useState({
+      day: "Monday",
+      startTime: "10:00",
+      endTime: "11:00",
+    });
+
+  /* =======================================================
+     LOAD MENTOR AVAILABILITY
+  ======================================================= */
+
+  useEffect(() => {
+    loadAvailability();
+  }, [
+    role,
+    profile?._id,
+    profile?.id,
+  ]);
+
+  async function loadAvailability() {
+    if (role !== "mentor") {
+      return;
+    }
+
+    const mentorId =
+      profile?._id ||
+      profile?.id;
+
+    if (!mentorId) {
+      return;
+    }
+
+    try {
+      setAvailabilityLoading(true);
+
+      const token =
+        localStorage.getItem(
+          "mentorconnect_token"
+        );
+
+const response = await fetch(
+  `${API_BASE}/workspace/mentors/${mentorId}/availability`,
+  {
+    headers: {
+      Authorization:
+        `Bearer ${token}`,
+    },
+  }
+);
+
+      const result =
+        await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result.message ||
+            "Unable to load availability"
+        );
+      }
+
+      setAvailability(
+        Array.isArray(
+          result.availability
+        )
+          ? result.availability
+          : []
+      );
+    } catch (error) {
+      console.error(
+        "Availability loading error:",
+        error
+      );
+    } finally {
+      setAvailabilityLoading(false);
+    }
+  }
+
+  /* =======================================================
+     SAVE MENTOR AVAILABILITY
+  ======================================================= */
+
+  async function saveAvailability() {
+    const mentorId =
+      profile?._id ||
+      profile?.id;
+
+    if (!mentorId) {
+      alert(
+        "Mentor profile not found."
+      );
+      return;
+    }
+
+    if (
+      !newAvailability.day ||
+      !newAvailability.startTime ||
+      !newAvailability.endTime
+    ) {
+      alert(
+        "Please select day and time."
+      );
+      return;
+    }
+
+    if (
+      newAvailability.startTime >=
+      newAvailability.endTime
+    ) {
+      alert(
+        "End time must be later than start time."
+      );
+      return;
+    }
+
+    const updatedAvailability = [
+      ...availability,
+      {
+        ...newAvailability,
+        active: true,
+      },
+    ];
+
+    try {
+      setAvailabilityLoading(true);
+
+      const token =
+        localStorage.getItem(
+          "mentorconnect_token"
+        );
+const response = await fetch(
+  `${API_BASE}/workspace/mentors/${mentorId}/availability`,
+  {
+    method: "PUT",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+
+            Authorization:
+              `Bearer ${token}`,
+          },
+
+          body: JSON.stringify({
+            availability:
+              updatedAvailability,
+          }),
+        }
+      );
+
+      const result =
+        await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result.message ||
+            "Unable to save availability"
+        );
+      }
+
+      setAvailability(
+        result.availability ||
+          updatedAvailability
+      );
+
+      notify(
+        "Office hours saved successfully"
+      );
+
+      setNewAvailability({
+        day: "Monday",
+        startTime: "10:00",
+        endTime: "11:00",
+      });
+    } catch (error) {
+      console.error(
+        "Availability save error:",
+        error
+      );
+
+      alert(
+        error.message ||
+          "Unable to save office hours"
+      );
+    } finally {
+      setAvailabilityLoading(false);
+    }
+  }
+
+  /* =======================================================
+     REMOVE MENTOR AVAILABILITY
+  ======================================================= */
+
+  async function removeAvailability(
+    index
+  ) {
+    const mentorId =
+      profile?._id ||
+      profile?.id;
+
+    if (!mentorId) {
+      return;
+    }
+
+    const updatedAvailability =
+      availability.filter(
+        (_, itemIndex) =>
+          itemIndex !== index
+      );
+
+    try {
+      setAvailabilityLoading(true);
+
+      const token =
+        localStorage.getItem(
+          "mentorconnect_token"
+        );
+
+  const response = await fetch(
+  `${API_BASE}/workspace/mentors/${mentorId}/availability`,
+  {
+    method: "PUT",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+
+            Authorization:
+              `Bearer ${token}`,
+          },
+
+          body: JSON.stringify({
+            availability:
+              updatedAvailability,
+          }),
+        }
+      );
+
+      const result =
+        await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result.message ||
+            "Unable to remove availability"
+        );
+      }
+
+      setAvailability(
+        result.availability ||
+          updatedAvailability
+      );
+
+      notify(
+        "Office hour removed"
+      );
+    } catch (error) {
+      console.error(
+        "Availability remove error:",
+        error
+      );
+
+      alert(
+        error.message ||
+          "Unable to remove office hour"
+      );
+    } finally {
+      setAvailabilityLoading(false);
+    }
+  }
+
+  /* =======================================================
+     RETURN
+  ======================================================= */
+
+  return (
+    <section>
+
+      {/* =====================================================
+          MENTOR AVAILABILITY
+      ===================================================== */}
+
+      {role === "mentor" && (
+        <section
+          className="mc-card"
+          style={{
+            marginBottom: "20px",
+          }}
+        >
+
+          <CardTitle
+            title="Mentor Availability"
+            sub="Set your office hours so students can book mentoring sessions"
+          />
+
+          {/* ADD AVAILABILITY */}
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns:
+                "1fr 1fr 1fr auto",
+              gap: "12px",
+              alignItems: "end",
+              marginTop: "16px",
+            }}
+          >
+
+            {/* DAY */}
+
+            <div>
+              <label className="mc-label">
+                Day
+              </label>
+
+              <select
+                className="mc-input"
+                value={
+                  newAvailability.day
+                }
+                onChange={(e) =>
+                  setNewAvailability(
+                    {
+                      ...newAvailability,
+                      day:
+                        e.target.value,
+                    }
+                  )
+                }
+              >
+                {[
+                  "Monday",
+                  "Tuesday",
+                  "Wednesday",
+                  "Thursday",
+                  "Friday",
+                  "Saturday",
+                  "Sunday",
+                ].map(
+                  (day) => (
+                    <option
+                      key={day}
+                      value={day}
+                    >
+                      {day}
+                    </option>
+                  )
+                )}
+              </select>
+            </div>
+
+            {/* START TIME */}
+
+            <div>
+              <label className="mc-label">
+                Start Time
+              </label>
+
+              <input
+                type="time"
+                className="mc-input"
+                value={
+                  newAvailability.startTime
+                }
+                onChange={(e) =>
+                  setNewAvailability(
+                    {
+                      ...newAvailability,
+                      startTime:
+                        e.target.value,
+                    }
+                  )
+                }
+              />
+            </div>
+
+            {/* END TIME */}
+
+            <div>
+              <label className="mc-label">
+                End Time
+              </label>
+
+              <input
+                type="time"
+                className="mc-input"
+                value={
+                  newAvailability.endTime
+                }
+                onChange={(e) =>
+                  setNewAvailability(
+                    {
+                      ...newAvailability,
+                      endTime:
+                        e.target.value,
+                    }
+                  )
+                }
+              />
+            </div>
+
+            {/* ADD BUTTON */}
+
+            <button
+              className="mc-primary"
+              onClick={
+                saveAvailability
+              }
+              disabled={
+                availabilityLoading
+              }
+            >
+              {availabilityLoading
+                ? "Saving..."
+                : "+ Add"}
+            </button>
+
+          </div>
+
+          {/* =================================================
+              CURRENT OFFICE HOURS
+          ================================================= */}
+
+          <div
+            style={{
+              marginTop: "24px",
+            }}
+          >
+
+            <h4
+              style={{
+                marginBottom: "12px",
+              }}
+            >
+              Your Office Hours
+            </h4>
+
+            {availabilityLoading &&
+            availability.length ===
+              0 ? (
+              <p>
+                Loading availability...
+              </p>
+            ) : availability.length ===
+              0 ? (
+              <p
+                style={{
+                  color: "#777",
+                }}
+              >
+                No office hours added
+                yet.
+              </p>
+            ) : (
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection:
+                    "column",
+                  gap: "10px",
+                }}
+              >
+
+                {availability.map(
+                  (
+                    item,
+                    index
+                  ) => (
+                    <div
+                      key={`${item.day}-${item.startTime}-${index}`}
+                      style={{
+                        display:
+                          "flex",
+                        justifyContent:
+                          "space-between",
+                        alignItems:
+                          "center",
+                        padding:
+                          "12px 14px",
+                        border:
+                          "1px solid #ddd",
+                        borderRadius:
+                          "8px",
+                      }}
+                    >
+
+                      <div>
+
+                        <strong>
+                          {item.day}
+                        </strong>
+
+                        <span
+                          style={{
+                            marginLeft:
+                              "12px",
+                          }}
+                        >
+                          {
+                            item.startTime
+                          }{" "}
+                          -{" "}
+                          {
+                            item.endTime
+                          }
+                        </span>
+
+                      </div>
+
+                      <button
+                        className="mc-danger-link"
+                        onClick={() =>
+                          removeAvailability(
+                            index
+                          )
+                        }
+                        disabled={
+                          availabilityLoading
+                        }
+                      >
+                        Remove
+                      </button>
+
+                    </div>
+                  )
+                )}
+
+              </div>
+            )}
+
+          </div>
+
+        </section>
+      )}
+
+      {/* =====================================================
+          EXISTING MENTORING SESSIONS
+      ===================================================== */}
+
       <section className="mc-card">
 
         <CardTitle
@@ -3245,34 +3801,40 @@ emergencyContact: item.emergencyContact || "",
           sub="Schedule, update and manage mentoring meetings"
         >
 
-          <button
-            className="mc-primary"
-            onClick={() =>
-              setModal({
-                type: "session",
+          {(role === "mentor" ||
+            role === "hod") && (
+            <button
+              className="mc-primary"
+              onClick={() =>
+                setModal({
+                  type: "session",
 
-                item: {
-                  title: "",
-                  date: "",
-                  time: "10:00",
-                  owner:
-                    profile.name ||
-                    info.label,
-                  status:
-                    "Scheduled",
-                },
-              })
-            }
-          >
-            + Schedule Session
-          </button>
+                  item: {
+                    title: "",
+                    date: "",
+                    time: "10:00",
+
+                    owner:
+                      profile.name ||
+                      info.label,
+
+                    status:
+                      "Scheduled",
+                  },
+                })
+              }
+            >
+              + Schedule Session
+            </button>
+          )}
 
         </CardTitle>
 
+        {/* SESSION LIST */}
 
         <div className="mc-session-grid">
 
-          {data.sessions.map(
+          {(data.sessions || []).map(
             (session) => (
               <div
                 className="mc-session"
@@ -3347,43 +3909,27 @@ emergencyContact: item.emergencyContact || "",
 
         </div>
 
-        {totalMentorPages > 1 && (
-          <div className="mc-pagination">
-            <button
-              className="mc-link"
-              disabled={mentorPage === 1}
-              onClick={() =>
-                setMentorPage(
-                  (page) => page - 1
-                )
-              }
-            >
-              Previous
-            </button>
+        {/* NO SESSIONS */}
 
-            <span>
-              Page {mentorPage} of {totalMentorPages}
-            </span>
-
-            <button
-              className="mc-link"
-              disabled={
-                mentorPage === totalMentorPages
-              }
-              onClick={() =>
-                setMentorPage(
-                  (page) => page + 1
-                )
-              }
-            >
-              Next
-            </button>
-          </div>
+        {(data.sessions || [])
+          .length === 0 && (
+          <p
+            style={{
+              color: "#777",
+              marginTop: "16px",
+            }}
+          >
+            No mentoring sessions
+            scheduled yet.
+          </p>
         )}
 
       </section>
-    );
-  }
+
+    </section>
+  );
+}
+
 
   /* =======================================================
      MENTORS

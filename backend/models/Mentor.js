@@ -41,6 +41,38 @@ const mentorSchema = new mongoose.Schema(
       trim: true,
     },
 
+    availability: [
+  {
+    day: {
+      type: String,
+      enum: [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday",
+      ],
+    },
+
+    startTime: {
+      type: String,
+      default: "",
+    },
+
+    endTime: {
+      type: String,
+      default: "",
+    },
+
+    active: {
+      type: Boolean,
+      default: true,
+    },
+  },
+],
+
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
