@@ -2412,43 +2412,46 @@ emergencyContact: item.emergencyContact || "",
           </div>
 
           <div className="mc-form-grid">
+{[
+  [
+    "name",
+    "Full Name",
+  ],
 
-            {[
-              [
-                "name",
-                "Full Name",
-              ],
+  ...(role !== "mentor"
+    ? [
+        [
+          "usn",
+          "USN",
+        ],
+      ]
+    : []),
 
-              [
-                "usn",
-                "USN",
-              ],
+  [
+    "email",
+    "Email",
+  ],
 
-              [
-                "email",
-                "Email",
-              ],
+  [
+    "phone",
+    "Phone",
+  ],
 
-              [
-                "phone",
-                "Phone",
-              ],
+  [
+    "department",
+    "Department",
+  ],
 
-              [
-                "department",
-                "Department",
-              ],
+  [
+    "designation",
+    "Designation",
+  ],
 
-              [
-                "designation",
-                "Designation",
-              ],
-
-              [
-                "semester",
-                "Semester / Year",
-              ],
-            ].map(
+  [
+    "semester",
+    "Semester / Year",
+  ],
+].map(
               ([key, label]) => (
                 <label
                   key={key}
