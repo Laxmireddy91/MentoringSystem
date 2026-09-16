@@ -1,6 +1,7 @@
 import Student from "../models/Student.js";
 import Mentor from "../models/Mentor.js";
 import User from "../models/User.js";
+import { calculateSubjectTotal } from "../utils/academicCalculations.js";
 
 export async function getAnalytics(req, res, next) {
   try {
@@ -72,18 +73,25 @@ export async function getAnalytics(req, res, next) {
           students: rows.length,
 
           performance:
-            rows.length
-              ? Math.round(
-                  rows.reduce(
-                    (sum, row) =>
-                      sum +
-                      Number(
-                        row.total || 0
-                      ),
-                    0
-                  ) / rows.length
-                )
-              : 0,
+  rows.length
+    ? Math.round(
+        rows.reduce(
+          (sum, row) => {
+            const subjectTotals = (row.subjects || []).map(
+              (subject) => calculateSubjectTotal(subject)
+            );
+
+            const studentAverage = subjectTotals.length
+              ? subjectTotals.reduce((a, b) => a + b, 0) /
+                subjectTotals.length
+              : 0;
+
+            return sum + studentAverage;
+          },
+          0
+        ) / rows.length
+      )
+    : 0,
         })
       );
 
@@ -94,19 +102,22 @@ export async function getAnalytics(req, res, next) {
     */
 
     const averagePerformance =
-      students.length
-        ? Math.round(
-            students.reduce(
-              (sum, student) =>
-                sum +
-                Number(
-                  student.total || 0
-                ),
-              0
-            ) / students.length
-          )
-        : 0;
+  students.length
+    ? Math.round(
+        students.reduce((sum, student) => {
+          const subjectTotals = (student.subjects || []).map(
+            (subject) => calculateSubjectTotal(subject)
+          );
 
+          const studentAverage = subjectTotals.length
+            ? subjectTotals.reduce((a, b) => a + b, 0) /
+              subjectTotals.length
+            : 0;
+
+          return sum + studentAverage;
+        }, 0) / students.length
+      )
+    : 0;
     /*
     |--------------------------------------------------------------------------
     | RESPONSE
