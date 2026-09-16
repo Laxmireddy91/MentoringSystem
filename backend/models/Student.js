@@ -77,7 +77,6 @@ const subjectSchema = new mongoose.Schema(
   }
 );
 
-
 /* =========================================================
    STUDENT
 ========================================================= */
@@ -104,8 +103,7 @@ const studentSchema = new mongoose.Schema(
 
     dept: {
       type: String,
-      default:
-        "Computer Science & Engineering",
+      default: "Computer Science & Engineering",
       trim: true,
     },
 
@@ -115,27 +113,31 @@ const studentSchema = new mongoose.Schema(
       trim: true,
     },
 
+    section: {
+      type: String,
+      enum: ["A", "B", "C"],
+      default: "A",
+      uppercase: true,
+      trim: true,
+    },
+
+    /* -------------------------------------------------------
+       MENTOR RELATIONSHIP
+       mentorId is the single source of truth.
+    ------------------------------------------------------- */
+
     mentorId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Mentor",
       default: null,
     },
 
-
     /* -------------------------------------------------------
-       OVERALL MARKS
-       Attendance has been completely removed.
+       LEGACY / DERIVED ACADEMIC FIELDS
+       subjects[] is the single source of truth.
+       These fields are retained for compatibility.
     ------------------------------------------------------- */
-  /*
- * LEGACY / DERIVED ACADEMIC FIELDS
- *
- * The subjects[] array is the single source of truth
- * for academic marks.
- *
- * These fields are retained temporarily for compatibility
- * with existing frontend/API consumers and should be derived
- * from subjects[] rather than treated as independently entered data.
- */
+
     cie1: {
       type: Number,
       default: 0,
@@ -176,7 +178,6 @@ const studentSchema = new mongoose.Schema(
       default: 0,
     },
 
-
     /* -------------------------------------------------------
        CONTACT
     ------------------------------------------------------- */
@@ -188,39 +189,39 @@ const studentSchema = new mongoose.Schema(
     },
 
     /* -------------------------------------------------------
-   PARENT / GUARDIAN INFORMATION
-------------------------------------------------------- */
+       PARENT / GUARDIAN INFORMATION
+    ------------------------------------------------------- */
 
-parentName: {
-  type: String,
-  default: "",
-  trim: true,
-},
+    parentName: {
+      type: String,
+      default: "",
+      trim: true,
+    },
 
-parentRelation: {
-  type: String,
-  default: "",
-  trim: true,
-},
+    parentRelation: {
+      type: String,
+      default: "",
+      trim: true,
+    },
 
-parentPhone: {
-  type: String,
-  default: "",
-  trim: true,
-},
+    parentPhone: {
+      type: String,
+      default: "",
+      trim: true,
+    },
 
-parentEmail: {
-  type: String,
-  default: "",
-  lowercase: true,
-  trim: true,
-},
+    parentEmail: {
+      type: String,
+      default: "",
+      lowercase: true,
+      trim: true,
+    },
 
-emergencyContact: {
-  type: String,
-  default: "",
-  trim: true,
-},
+    emergencyContact: {
+      type: String,
+      default: "",
+      trim: true,
+    },
 
     /* -------------------------------------------------------
        SUBJECTS / PERFORMANCE REPORT
@@ -231,31 +232,81 @@ emergencyContact: {
       default: [],
     },
 
+    /* -------------------------------------------------------
+       MENTORSHIP RECORDS
+    ------------------------------------------------------- */
+
     mentorshipRecords: {
       type: [
         {
-          date: { type: String, default: "" },
-          code: { type: String, default: "" },
-          details: { type: String, default: "" },
-          actionTaken: { type: String, default: "" },
-          studentSigned: { type: Boolean, default: false },
-          mentorSigned: { type: Boolean, default: false },
+          date: {
+            type: String,
+            default: "",
+          },
+
+          code: {
+            type: String,
+            default: "",
+          },
+
+          details: {
+            type: String,
+            default: "",
+          },
+
+          actionTaken: {
+            type: String,
+            default: "",
+          },
+
+          studentSigned: {
+            type: Boolean,
+            default: false,
+          },
+
+          mentorSigned: {
+            type: Boolean,
+            default: false,
+          },
         },
       ],
       default: [],
     },
 
+    /* -------------------------------------------------------
+       BACKLOG RECORDS
+    ------------------------------------------------------- */
+
     backlogRecords: {
       type: [
         {
-          courseName: { type: String, default: "" },
-          yearOfPass: { type: String, default: "" },
-          extMarks: { type: String, default: "" },
-          remarks: { type: String, default: "" },
+          courseName: {
+            type: String,
+            default: "",
+          },
+
+          yearOfPass: {
+            type: String,
+            default: "",
+          },
+
+          extMarks: {
+            type: String,
+            default: "",
+          },
+
+          remarks: {
+            type: String,
+            default: "",
+          },
         },
       ],
       default: [],
     },
+
+    /* -------------------------------------------------------
+       ACADEMIC SUMMARY
+    ------------------------------------------------------- */
 
     sgpa: {
       type: Number,
@@ -272,17 +323,52 @@ emergencyContact: {
       default: 0,
     },
 
+    /* -------------------------------------------------------
+       ACHIEVEMENTS
+    ------------------------------------------------------- */
+
     achievements: {
       type: [
         {
-          title: { type: String, default: "" },
-          category: { type: String, default: "" },
-          date: { type: String, default: "" },
-          description: { type: String, default: "" },
-          fileName: { type: String, default: "" },
-          filePath: { type: String, default: "" },
-          mimeType: { type: String, default: "" },
-          fileSize: { type: Number, default: 0 },
+          title: {
+            type: String,
+            default: "",
+          },
+
+          category: {
+            type: String,
+            default: "",
+          },
+
+          date: {
+            type: String,
+            default: "",
+          },
+
+          description: {
+            type: String,
+            default: "",
+          },
+
+          fileName: {
+            type: String,
+            default: "",
+          },
+
+          filePath: {
+            type: String,
+            default: "",
+          },
+
+          mimeType: {
+            type: String,
+            default: "",
+          },
+
+          fileSize: {
+            type: Number,
+            default: 0,
+          },
         },
       ],
       default: [],
@@ -301,7 +387,6 @@ emergencyContact: {
       type: Date,
     },
 
-
     /* -------------------------------------------------------
        LINK WITH USER
     ------------------------------------------------------- */
@@ -313,18 +398,13 @@ emergencyContact: {
       sparse: true,
     },
   },
-
   {
     timestamps: true,
   }
 );
 
-
 /* =========================================================
    EXPORT
 ========================================================= */
 
-export default mongoose.model(
-  "Student",
-  studentSchema
-);
+export default mongoose.model("Student", studentSchema);

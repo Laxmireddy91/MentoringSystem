@@ -1,22 +1,33 @@
 import express from "express";
 import Student from "../models/Student.js";
 import Mentor from "../models/Mentor.js";
-
 import {
   createSession,
   updateSession,
   deleteSession,
 } from "../controllers/sessionController.js";
+
 import {
   markNotificationAsRead,
 } from "../controllers/notificationController.js";
+
 import {
   getAnalytics,
 } from "../controllers/analyticsController.js";
+
 import {
   updateProfile,
 } from "../controllers/profileController.js";
-import { getDashboard } from "../controllers/dashboardController.js";
+
+import {
+  getDashboard,
+} from "../controllers/dashboardController.js";
+
+import MentoringBooking from "../models/MentoringBooking.js";
+import Session from "../models/Session.js";
+import Notification from "../models/Notification.js";
+import Task from "../models/Task.js";
+import User from "../models/User.js";
 
 import { protect, allowRoles } from "../middleware/auth.js";
 
@@ -159,6 +170,7 @@ function cleanStudentPayload(body = {}) {
     "dept",
     "year",
     "mentorId",
+    "section",
     "backlog",
     "phone",
     "subjects",
@@ -635,4 +647,251 @@ router.get(
   getAnalytics
 );
 
+/*
+=========================================================
+ MENTOR AVAILABILITY
+=========================================================
+*/
+
+router.get(
+  "/mentors/:mentorId/availability",
+  async (req, res) => {
+    try {
+      const mentor = await Mentor.findById(req.params.mentorId).lean();
+
+      if (!mentor) {
+        return res.status(404).json({
+          message: "Mentor not found",
+        });
+      }
+
+      return res.json({
+        availability: mentor.availability || [],
+      });
+    } catch (error) {
+      console.error(
+        "Get mentor availability error:",
+        error
+      );
+
+      return res.status(500).json({
+        message: "Failed to load mentor availability",
+      });
+    }
+  }
+);
+
+
+router.put(
+  "/mentors/:mentorId/availability",
+  allowRoles("mentor", "hod"),
+  async (req, res) => {
+    try {
+      const { availability } = req.body;
+
+      if (!Array.isArray(availability)) {
+        return res.status(400).json({
+          message: "Availability must be an array",
+        });
+      }
+
+      const cleanedAvailability = availability
+        .map((item) => ({
+          day: item.day,
+          startTime: item.startTime || "",
+          endTime: item.endTime || "",
+          active: item.active !== false,
+        }))
+        .filter(
+          (item) =>
+            item.day &&
+            item.startTime &&
+            item.endTime
+        );
+
+      const mentor = await Mentor.findByIdAndUpdate(
+        req.params.mentorId,
+        {
+          $set: {
+            availability: cleanedAvailability,
+          },
+        },
+        {
+          new: true,
+          runValidators: true,
+        }
+      );
+
+      if (!mentor) {
+        return res.status(404).json({
+          message: "Mentor not found",
+        });
+      }
+
+      return res.json({
+        message: "Availability saved successfully",
+        availability: mentor.availability || [],
+      });
+    } catch (error) {
+      console.error(
+        "Save mentor availability error:",
+        error
+      );
+
+      return res.status(500).json({
+        message: "Failed to save availability",
+      });
+    }
+  }
+);
+/*
+=========================================================
+ MENTORING SESSION BOOKING
+=========================================================
+*/
+
+router.post(
+  "/mentoring-bookings",
+  allowRoles("student"),
+  async (req, res) => {
+    try {
+      const {
+        mentorId,
+        date,
+        time,
+        title,
+      } = req.body;
+
+      if (!mentorId || !date || !time) {
+        return res.status(400).json({
+          message: "Mentor, date and time are required",
+        });
+      }
+
+      const mentor = await Mentor.findById(mentorId);
+
+      if (!mentor) {
+        return res.status(404).json({
+          message: "Mentor not found",
+        });
+      }
+
+      const student = await Student.findOne({
+        $or: [
+          { user: req.user._id },
+          { email: req.user.email },
+        ],
+      });
+
+      if (!student) {
+        return res.status(404).json({
+          message: "Student profile not found",
+        });
+      }
+
+      const existingBooking =
+        await MentoringBooking.findOne({
+          mentor: mentor._id,
+          date,
+          time,
+          status: "Booked",
+        });
+
+      if (existingBooking) {
+        return res.status(409).json({
+          message:
+            "This mentoring slot is already booked",
+        });
+      }
+
+      const booking =
+        await MentoringBooking.create({
+          mentor: mentor._id,
+          student: student._id,
+          date,
+          time,
+          title:
+            title?.trim() ||
+            "Mentoring Session",
+        });
+
+      const populatedBooking =
+        await MentoringBooking.findById(
+          booking._id
+        )
+          .populate("mentor", "name mentorId")
+          .populate("student", "name usn");
+
+      return res.status(201).json({
+        message: "Mentoring session booked successfully",
+        booking: populatedBooking,
+      });
+    } catch (error) {
+      console.error(
+        "Create mentoring booking error:",
+        error
+      );
+
+      return res.status(500).json({
+        message: "Failed to book mentoring session",
+      });
+    }
+  }
+);
+
+router.get(
+  "/mentoring-bookings",
+  async (req, res) => {
+    try {
+      let query = {};
+
+      if (req.user.role === "student") {
+        const student = await Student.findOne({
+          $or: [
+            { user: req.user._id },
+            { email: req.user.email },
+          ],
+        });
+
+        if (!student) {
+          return res.json([]);
+        }
+
+        query.student = student._id;
+      }
+
+      if (req.user.role === "mentor") {
+        const mentor = await Mentor.findOne({
+          user: req.user._id,
+        });
+
+        if (!mentor) {
+          return res.json([]);
+        }
+
+        query.mentor = mentor._id;
+      }
+
+      const bookings =
+        await MentoringBooking.find(query)
+          .populate("mentor", "name mentorId")
+          .populate("student", "name usn")
+          .sort({
+            date: 1,
+            time: 1,
+          });
+
+      return res.json(bookings);
+    } catch (error) {
+      console.error(
+        "Get mentoring bookings error:",
+        error
+      );
+
+      return res.status(500).json({
+        message: "Failed to load mentoring bookings",
+      });
+    }
+  }
+);
 export default router;

@@ -8,6 +8,8 @@ import {
   useNavigate,
 } from "react-router-dom";
 
+import JSZip from "jszip";
+
 import Sidebar from "../components/Sidebar";
 import Messages from "../components/Messages";
 import api from "../api";
@@ -321,8 +323,104 @@ const mentorsPerPage = 10;
   const [modal, setModal] =
     useState(null);
 
-  const [help, setHelp] =
-    useState(false);
+const [help, setHelp] = useState(false);
+const [chatMessages, setChatMessages] = useState([
+  {
+    from: "bot",
+    text: "Hi! I'm MentorConnect Help. Ask me about the dashboard, reports, sessions, performance, achievements, notifications, or profile.",
+  },
+]);
+const [chatInput, setChatInput] = useState("");
+
+const faqAnswers = [
+  {
+    keywords: ["dashboard", "home", "overview"],
+    answer:
+      "The Dashboard gives you a quick overview of your academic information, sessions, notifications, performance, and other important updates.",
+  },
+  {
+    keywords: ["report", "reports"],
+    answer:
+      "Open Reports Centre to view or manage student reports and supporting documents. Students can upload certificates and achievements there.",
+  },
+  {
+    keywords: ["achievement", "certificate", "document", "upload"],
+    answer:
+      "You can upload certificates and achievement documents from Reports Centre. Multiple documents can be selected and uploaded together.",
+  },
+  {
+    keywords: ["session", "meeting", "mentor"],
+    answer:
+      "Sessions contain mentoring meeting information. Check the Sessions or Schedule section to view available mentoring session details.",
+  },
+  {
+    keywords: ["performance", "marks", "cie", "grade", "academic"],
+    answer:
+      "Performance and Academic sections show the student's academic progress, marks, subjects, and related performance information.",
+  },
+  {
+    keywords: ["notification", "notifications", "alert"],
+    answer:
+      "Notifications show important updates and messages related to your mentoring activities and academic information.",
+  },
+  {
+    keywords: ["profile", "personal", "details"],
+    answer:
+      "Open Profile to view or update the information available for your account.",
+  },
+  {
+    keywords: ["risk", "at risk"],
+    answer:
+      "The Student Risk Monitor uses rule-based analysis of academic information to identify students who may need additional attention.",
+  },
+  {
+    keywords: ["help", "what can you do", "faq"],
+    answer:
+      "I can answer common questions about Dashboard, Reports, Achievements, Sessions, Performance, Notifications, Profile, and Student Risk Monitor.",
+  },
+];
+
+const getFaqAnswer = (question) => {
+  const text = question.toLowerCase().trim();
+
+  if (!text) {
+    return "Please type a question first.";
+  }
+
+  const match = faqAnswers.find((faq) =>
+    faq.keywords.some((keyword) => text.includes(keyword))
+  );
+
+  if (match) {
+    return match.answer;
+  }
+
+  return "Sorry, I don't have an answer for that yet. Try asking about Dashboard, Reports, Achievements, Sessions, Performance, Notifications, Profile, or Risk Monitor.";
+};
+
+const sendChatMessage = () => {
+  const question = chatInput.trim();
+
+  if (!question) return;
+
+  const answer = getFaqAnswer(question);
+
+  setChatMessages((current) => [
+    ...current,
+    {
+      from: "user",
+      text: question,
+    },
+    {
+      from: "bot",
+      text: answer,
+    },
+  ]);
+
+  setChatInput("");
+};
+
+
 
   const [loading, setLoading] =
     useState(true);
@@ -332,6 +430,12 @@ const mentorsPerPage = 10;
 
   const [analytics, setAnalytics] =
     useState(null);
+
+const [leaderboardYear, setLeaderboardYear] =
+  useState("All");
+
+const [leaderboardSection, setLeaderboardSection] =
+  useState("All");
 
 const [riskStudents, setRiskStudents] =
   useState([]);
@@ -621,41 +725,75 @@ const [riskError, setRiskError] =
      COUNTS
   ======================================================= */
 
-  const counts = useMemo(() => {
-    const students =
-      data.students || [];
 
-    return {
-      students:
-        students.length,
 
-      mentors:
-        data.mentors.filter(
-          (mentor) =>
-            mentor.status ===
-            "Active"
-        ).length,
+  /* =======================================================
+   COUNTS
+======================================================= */
 
-      performance:
-        average(
-          students.map(
-            (student) =>
-              student.total
-          )
-        ),
+const counts = useMemo(() => {
+  const students = data.students || [];
+  const mentors = data.mentors || [];
 
-      backlog:
-        students.reduce(
-          (sum, student) =>
-            sum +
-            Number(
-              student.backlog || 0
-            ),
-          0
-        ),
-    };
-  }, [data]);
+  return {
+    students: students.length,
 
+    mentors: mentors.length,
+
+    performance: average(
+      students.map((student) => student.total)
+    ),
+
+    backlog: students.reduce(
+      (sum, student) =>
+        sum + Number(student.backlog || 0),
+      0
+    ),
+  };
+}, [data.students, data.mentors]);
+
+const leaderboardStudents = useMemo(() => {
+const students = data.students || [];
+
+  return students
+    .filter((student) => {
+      const yearMatch =
+        leaderboardYear === "All" ||
+        student.year === leaderboardYear;
+
+      const sectionMatch =
+        leaderboardSection === "All" ||
+        String(student.section || "").toUpperCase() ===
+          leaderboardSection;
+
+      return yearMatch && sectionMatch;
+    })
+    .map((student) => {
+      const total = Number(student.total || 0);
+
+      return {
+        ...student,
+        leaderboardScore: total,
+      };
+    })
+    .filter(
+      (student) =>
+        Number.isFinite(student.leaderboardScore)
+    )
+    .sort(
+      (a, b) =>
+        b.leaderboardScore -
+        a.leaderboardScore
+    )
+    .slice(0, 10);
+}, [
+  data.students,
+  leaderboardYear,
+  leaderboardSection,
+]);
+    
+
+   
   /* =======================================================
      TABS
   ======================================================= */
@@ -837,6 +975,7 @@ const paginatedMentors =
         dept:
           "Computer Science & Engineering",
         year: "3rd Year",
+        section: "A",
         mentor:
           role === "mentor"
             ? data.profiles?.mentor
@@ -883,6 +1022,7 @@ parentEmail: item.parentEmail || "",
 emergencyContact: item.emergencyContact || "",
         dept: item.dept,
         year: item.year,
+        section: item.section || "A",
         mentor: item.mentor,
         cie1:
           Number(
@@ -2882,7 +3022,7 @@ emergencyContact: item.emergencyContact || "",
                   const nextStudent = visible.find(
                     (student) => safeId(student) === event.target.value
                   );
-                  setSelectedId(event.target.value);
+                  setSelectedId(value);
                   setDraft(reportDraft(nextStudent));
                 }}
               >
@@ -3095,12 +3235,568 @@ emergencyContact: item.emergencyContact || "",
      SESSIONS
   ======================================================= */
 
-  function Sessions() {
-    const profile =
-      data.profiles?.[role] ||
-      {};
 
-    return (
+  /* =======================================================
+   SESSIONS
+======================================================= */
+
+function Sessions() {
+  const profile =
+    data.profiles?.[role] ||
+    {};
+
+  const API_BASE = (
+    import.meta.env.VITE_API_URL ||
+    "http://localhost:5000/api"
+  ).replace(/\/$/, "");
+  /* =======================================================
+     MENTOR AVAILABILITY STATE
+  ======================================================= */
+
+  const [availability, setAvailability] =
+    useState([]);
+
+  const [availabilityLoading, setAvailabilityLoading] =
+    useState(false);
+
+  const [newAvailability, setNewAvailability] =
+    useState({
+      day: "Monday",
+      startTime: "10:00",
+      endTime: "11:00",
+    });
+
+  /* =======================================================
+     LOAD MENTOR AVAILABILITY
+  ======================================================= */
+
+  useEffect(() => {
+    loadAvailability();
+  }, [
+    role,
+    profile?._id,
+    profile?.id,
+  ]);
+
+  async function loadAvailability() {
+    if (role !== "mentor") {
+      return;
+    }
+
+    const mentorId =
+      profile?._id ||
+      profile?.id;
+
+    if (!mentorId) {
+      return;
+    }
+
+    try {
+      setAvailabilityLoading(true);
+
+      const token =
+        localStorage.getItem(
+          "mentorconnect_token"
+        );
+
+const response = await fetch(
+  `${API_BASE}/workspace/mentors/${mentorId}/availability`,
+  {
+    headers: {
+      Authorization:
+        `Bearer ${token}`,
+    },
+  }
+);
+
+      const result =
+        await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result.message ||
+            "Unable to load availability"
+        );
+      }
+
+      setAvailability(
+        Array.isArray(
+          result.availability
+        )
+          ? result.availability
+          : []
+      );
+    } catch (error) {
+      console.error(
+        "Availability loading error:",
+        error
+      );
+    } finally {
+      setAvailabilityLoading(false);
+    }
+  }
+
+  /* =======================================================
+     SAVE MENTOR AVAILABILITY
+  ======================================================= */
+
+  async function saveAvailability() {
+    const mentorId =
+      profile?._id ||
+      profile?.id;
+
+    if (!mentorId) {
+      alert(
+        "Mentor profile not found."
+      );
+      return;
+    }
+
+    if (
+      !newAvailability.day ||
+      !newAvailability.startTime ||
+      !newAvailability.endTime
+    ) {
+      alert(
+        "Please select day and time."
+      );
+      return;
+    }
+
+    if (
+      newAvailability.startTime >=
+      newAvailability.endTime
+    ) {
+      alert(
+        "End time must be later than start time."
+      );
+      return;
+    }
+
+    const updatedAvailability = [
+      ...availability,
+      {
+        ...newAvailability,
+        active: true,
+      },
+    ];
+
+    try {
+      setAvailabilityLoading(true);
+
+      const token =
+        localStorage.getItem(
+          "mentorconnect_token"
+        );
+const response = await fetch(
+  `${API_BASE}/workspace/mentors/${mentorId}/availability`,
+  {
+    method: "PUT",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+
+            Authorization:
+              `Bearer ${token}`,
+          },
+
+          body: JSON.stringify({
+            availability:
+              updatedAvailability,
+          }),
+        }
+      );
+
+      const result =
+        await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result.message ||
+            "Unable to save availability"
+        );
+      }
+
+      setAvailability(
+        result.availability ||
+          updatedAvailability
+      );
+
+      notify(
+        "Office hours saved successfully"
+      );
+
+      setNewAvailability({
+        day: "Monday",
+        startTime: "10:00",
+        endTime: "11:00",
+      });
+    } catch (error) {
+      console.error(
+        "Availability save error:",
+        error
+      );
+
+      alert(
+        error.message ||
+          "Unable to save office hours"
+      );
+    } finally {
+      setAvailabilityLoading(false);
+    }
+  }
+
+  /* =======================================================
+     REMOVE MENTOR AVAILABILITY
+  ======================================================= */
+
+  async function removeAvailability(
+    index
+  ) {
+    const mentorId =
+      profile?._id ||
+      profile?.id;
+
+    if (!mentorId) {
+      return;
+    }
+
+    const updatedAvailability =
+      availability.filter(
+        (_, itemIndex) =>
+          itemIndex !== index
+      );
+
+    try {
+      setAvailabilityLoading(true);
+
+      const token =
+        localStorage.getItem(
+          "mentorconnect_token"
+        );
+
+  const response = await fetch(
+  `${API_BASE}/workspace/mentors/${mentorId}/availability`,
+  {
+    method: "PUT",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+
+            Authorization:
+              `Bearer ${token}`,
+          },
+
+          body: JSON.stringify({
+            availability:
+              updatedAvailability,
+          }),
+        }
+      );
+
+      const result =
+        await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result.message ||
+            "Unable to remove availability"
+        );
+      }
+
+      setAvailability(
+        result.availability ||
+          updatedAvailability
+      );
+
+      notify(
+        "Office hour removed"
+      );
+    } catch (error) {
+      console.error(
+        "Availability remove error:",
+        error
+      );
+
+      alert(
+        error.message ||
+          "Unable to remove office hour"
+      );
+    } finally {
+      setAvailabilityLoading(false);
+    }
+  }
+
+  /* =======================================================
+     RETURN
+  ======================================================= */
+
+  return (
+    <section>
+
+      {/* =====================================================
+          MENTOR AVAILABILITY
+      ===================================================== */}
+
+      {role === "mentor" && (
+        <section
+          className="mc-card"
+          style={{
+            marginBottom: "20px",
+          }}
+        >
+
+          <CardTitle
+            title="Mentor Availability"
+            sub="Set your office hours so students can book mentoring sessions"
+          />
+
+          {/* ADD AVAILABILITY */}
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns:
+                "1fr 1fr 1fr auto",
+              gap: "12px",
+              alignItems: "end",
+              marginTop: "16px",
+            }}
+          >
+
+            {/* DAY */}
+
+            <div>
+              <label className="mc-label">
+                Day
+              </label>
+
+              <select
+                className="mc-input"
+                value={
+                  newAvailability.day
+                }
+                onChange={(e) =>
+                  setNewAvailability(
+                    {
+                      ...newAvailability,
+                      day:
+                        e.target.value,
+                    }
+                  )
+                }
+              >
+                {[
+                  "Monday",
+                  "Tuesday",
+                  "Wednesday",
+                  "Thursday",
+                  "Friday",
+                  "Saturday",
+                  "Sunday",
+                ].map(
+                  (day) => (
+                    <option
+                      key={day}
+                      value={day}
+                    >
+                      {day}
+                    </option>
+                  )
+                )}
+              </select>
+            </div>
+
+            {/* START TIME */}
+
+            <div>
+              <label className="mc-label">
+                Start Time
+              </label>
+
+              <input
+                type="time"
+                className="mc-input"
+                value={
+                  newAvailability.startTime
+                }
+                onChange={(e) =>
+                  setNewAvailability(
+                    {
+                      ...newAvailability,
+                      startTime:
+                        e.target.value,
+                    }
+                  )
+                }
+              />
+            </div>
+
+            {/* END TIME */}
+
+            <div>
+              <label className="mc-label">
+                End Time
+              </label>
+
+              <input
+                type="time"
+                className="mc-input"
+                value={
+                  newAvailability.endTime
+                }
+                onChange={(e) =>
+                  setNewAvailability(
+                    {
+                      ...newAvailability,
+                      endTime:
+                        e.target.value,
+                    }
+                  )
+                }
+              />
+            </div>
+
+            {/* ADD BUTTON */}
+
+            <button
+              className="mc-primary"
+              onClick={
+                saveAvailability
+              }
+              disabled={
+                availabilityLoading
+              }
+            >
+              {availabilityLoading
+                ? "Saving..."
+                : "+ Add"}
+            </button>
+
+          </div>
+
+          {/* =================================================
+              CURRENT OFFICE HOURS
+          ================================================= */}
+
+          <div
+            style={{
+              marginTop: "24px",
+            }}
+          >
+
+            <h4
+              style={{
+                marginBottom: "12px",
+              }}
+            >
+              Your Office Hours
+            </h4>
+
+            {availabilityLoading &&
+            availability.length ===
+              0 ? (
+              <p>
+                Loading availability...
+              </p>
+            ) : availability.length ===
+              0 ? (
+              <p
+                style={{
+                  color: "#777",
+                }}
+              >
+                No office hours added
+                yet.
+              </p>
+            ) : (
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection:
+                    "column",
+                  gap: "10px",
+                }}
+              >
+
+                {availability.map(
+                  (
+                    item,
+                    index
+                  ) => (
+                    <div
+                      key={`${item.day}-${item.startTime}-${index}`}
+                      style={{
+                        display:
+                          "flex",
+                        justifyContent:
+                          "space-between",
+                        alignItems:
+                          "center",
+                        padding:
+                          "12px 14px",
+                        border:
+                          "1px solid #ddd",
+                        borderRadius:
+                          "8px",
+                      }}
+                    >
+
+                      <div>
+
+                        <strong>
+                          {item.day}
+                        </strong>
+
+                        <span
+                          style={{
+                            marginLeft:
+                              "12px",
+                          }}
+                        >
+                          {
+                            item.startTime
+                          }{" "}
+                          -{" "}
+                          {
+                            item.endTime
+                          }
+                        </span>
+
+                      </div>
+
+                      <button
+                        className="mc-danger-link"
+                        onClick={() =>
+                          removeAvailability(
+                            index
+                          )
+                        }
+                        disabled={
+                          availabilityLoading
+                        }
+                      >
+                        Remove
+                      </button>
+
+                    </div>
+                  )
+                )}
+
+              </div>
+            )}
+
+          </div>
+
+        </section>
+      )}
+
+      {/* =====================================================
+          EXISTING MENTORING SESSIONS
+      ===================================================== */}
+
       <section className="mc-card">
 
         <CardTitle
@@ -3108,34 +3804,40 @@ emergencyContact: item.emergencyContact || "",
           sub="Schedule, update and manage mentoring meetings"
         >
 
-          <button
-            className="mc-primary"
-            onClick={() =>
-              setModal({
-                type: "session",
+          {(role === "mentor" ||
+            role === "hod") && (
+            <button
+              className="mc-primary"
+              onClick={() =>
+                setModal({
+                  type: "session",
 
-                item: {
-                  title: "",
-                  date: "",
-                  time: "10:00",
-                  owner:
-                    profile.name ||
-                    info.label,
-                  status:
-                    "Scheduled",
-                },
-              })
-            }
-          >
-            + Schedule Session
-          </button>
+                  item: {
+                    title: "",
+                    date: "",
+                    time: "10:00",
+
+                    owner:
+                      profile.name ||
+                      info.label,
+
+                    status:
+                      "Scheduled",
+                  },
+                })
+              }
+            >
+              + Schedule Session
+            </button>
+          )}
 
         </CardTitle>
 
+        {/* SESSION LIST */}
 
         <div className="mc-session-grid">
 
-          {data.sessions.map(
+          {(data.sessions || []).map(
             (session) => (
               <div
                 className="mc-session"
@@ -3210,43 +3912,27 @@ emergencyContact: item.emergencyContact || "",
 
         </div>
 
-        {totalMentorPages > 1 && (
-          <div className="mc-pagination">
-            <button
-              className="mc-link"
-              disabled={mentorPage === 1}
-              onClick={() =>
-                setMentorPage(
-                  (page) => page - 1
-                )
-              }
-            >
-              Previous
-            </button>
+        {/* NO SESSIONS */}
 
-            <span>
-              Page {mentorPage} of {totalMentorPages}
-            </span>
-
-            <button
-              className="mc-link"
-              disabled={
-                mentorPage === totalMentorPages
-              }
-              onClick={() =>
-                setMentorPage(
-                  (page) => page + 1
-                )
-              }
-            >
-              Next
-            </button>
-          </div>
+        {(data.sessions || [])
+          .length === 0 && (
+          <p
+            style={{
+              color: "#777",
+              marginTop: "16px",
+            }}
+          >
+            No mentoring sessions
+            scheduled yet.
+          </p>
         )}
 
       </section>
-    );
-  }
+
+    </section>
+  );
+}
+
 
   /* =======================================================
      MENTORS
@@ -3534,13 +4220,13 @@ emergencyContact: item.emergencyContact || "",
     const selectedStudent =
       visible.find((student) => safeId(student) === selectedId) || visible[0] || null;
     const [draft, setDraft] = useState(() => reportDraft(selectedStudent));
-    const [achievement, setAchievement] = useState({
-      title: "",
-      category: "",
-      date: "",
-      description: "",
-      file: null,
-    });
+  const [achievement, setAchievement] = useState({
+  title: "",
+  category: "",
+  date: "",
+  description: "",
+  files: [],
+});
     const [uploading, setUploading] = useState(false);
     const [mentorDocuments, setMentorDocuments] = useState([]);
 
@@ -3595,45 +4281,78 @@ emergencyContact: item.emergencyContact || "",
       await savePerformanceReport(safeId(selectedStudent), draft);
     };
 
-    const upload = async () => {
-      if (!selectedStudent) return;
-      if (!achievement.title.trim()) {
-        notify("Enter an achievement title");
-        return;
-      }
-      if (!achievement.file) {
-        notify("Select a certificate or document");
-        return;
-      }
-      if (achievement.file.size > 3 * 1024 * 1024) {
-        notify("Document must be 3 MB or smaller");
-        return;
-      }
+  const upload = async () => {
+  if (!selectedStudent) return;
 
-      try {
-        setUploading(true);
-        const fileData = await fileToDataUrl(achievement.file);
-        await api.students.uploadAchievement(safeId(selectedStudent), {
+  if (!achievement.title.trim()) {
+    notify("Enter an achievement title");
+    return;
+  }
+
+  if (!achievement.files.length) {
+    notify("Select at least one certificate or document");
+    return;
+  }
+
+  const oversizedFile = achievement.files.find(
+    (file) => file.size > 3 * 1024 * 1024
+  );
+
+  if (oversizedFile) {
+    notify(`${oversizedFile.name} is larger than 3 MB`);
+    return;
+  }
+
+  try {
+    setUploading(true);
+
+    for (const file of achievement.files) {
+      const fileData = await fileToDataUrl(file);
+
+      await api.students.uploadAchievement(
+        safeId(selectedStudent),
+        {
           title: achievement.title.trim(),
           category: achievement.category.trim(),
           date: achievement.date,
           description: achievement.description.trim(),
-          fileName: achievement.file.name,
-          mimeType: achievement.file.type,
+          fileName: file.name,
+          mimeType: file.type,
           fileData,
-        });
-        await refreshDashboard();
-        setAchievement({ title: "", category: "", date: "", description: "", file: null });
-        const input = document.getElementById("achievement-document-upload");
-        if (input) input.value = "";
-        notify("Achievement and document uploaded successfully");
-      } catch (error) {
-        console.error(error);
-        notify(error.message || "Unable to upload achievement");
-      } finally {
-        setUploading(false);
-      }
-    };
+        }
+      );
+    }
+
+    await refreshDashboard();
+
+    setAchievement({
+      title: "",
+      category: "",
+      date: "",
+      description: "",
+      files: [],
+    });
+
+    const input = document.getElementById(
+      "achievement-document-upload"
+    );
+
+    if (input) {
+      input.value = "";
+    }
+
+    notify(
+      `${achievement.files.length} document${
+        achievement.files.length > 1 ? "s" : ""
+      } uploaded successfully`
+    );
+  } catch (error) {
+    console.error(error);
+    notify(error.message || "Unable to upload achievements");
+  } finally {
+    setUploading(false);
+  }
+};
 
     const removeAchievement = async (achievementId) => {
       if (!selectedStudent || !achievementId) return;
@@ -3774,7 +4493,54 @@ emergencyContact: item.emergencyContact || "",
                 <label>Achievement / Certification Title<input value={achievement.title} onChange={(event) => setAchievement((current) => ({ ...current, title: event.target.value }))} placeholder="e.g. Best Project Award" /></label>
                 <label>Category<input value={achievement.category} onChange={(event) => setAchievement((current) => ({ ...current, category: event.target.value }))} placeholder="Award / Certification / Co-curricular" /></label>
                 <label>Date<input type="date" value={achievement.date} onChange={(event) => setAchievement((current) => ({ ...current, date: event.target.value }))} /></label>
-                <label>Certificate / Document<input id="achievement-document-upload" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,image/*" onChange={(event) => setAchievement((current) => ({ ...current, file: event.target.files?.[0] || null }))} /></label>
+<label>
+  Certificate / Documents
+
+  <input
+    id="achievement-document-upload"
+    type="file"
+    multiple
+    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,image/*"
+    onChange={(event) =>
+      setAchievement((current) => ({
+        ...current,
+        files: Array.from(event.target.files || []),
+      }))
+    }
+  />
+</label>
+
+
+{achievement.files.length > 0 && (
+  <div className="mc-selected-files">
+    <strong>
+      Selected files ({achievement.files.length})
+    </strong>
+
+    {achievement.files.map((file, index) => (
+      <div
+        key={`${file.name}-${index}`}
+        className="mc-selected-file"
+      >
+        <span>{file.name}</span>
+
+        <button
+          type="button"
+          onClick={() =>
+            setAchievement((current) => ({
+              ...current,
+              files: current.files.filter(
+                (_, fileIndex) => fileIndex !== index
+              ),
+            }))
+          }
+        >
+          Remove
+        </button>
+      </div>
+    ))}
+  </div>
+)}
                 <label className="full">Description<textarea value={achievement.description} onChange={(event) => setAchievement((current) => ({ ...current, description: event.target.value }))} placeholder="Brief description of the achievement" /></label>
               </div>
               <div className="mc-achievement-form-footer">
@@ -4110,6 +4876,148 @@ const title =
 
             </div>
           )}
+
+
+        {/* =====================================================
+            DEPARTMENT-WISE STUDENT LEADERBOARD
+        ====================================================== */}
+
+        {type === "analytics" && (
+          <section
+            className="mc-card"
+            style={{ marginTop: "24px" }}
+          >
+            <CardTitle
+              title="Student Leaderboard"
+              sub="Top-performing students across different years and sections"
+            />
+
+            <div
+              className="mc-toolbar"
+              style={{ marginBottom: "20px" }}
+            >
+              <select
+                value={leaderboardYear}
+                onChange={(event) =>
+                  setLeaderboardYear(
+                    event.target.value
+                  )
+                }
+              >
+                <option value="All">
+                  All Years
+                </option>
+                <option value="1st Year">
+                  1st Year
+                </option>
+                <option value="2nd Year">
+                  2nd Year
+                </option>
+                <option value="3rd Year">
+                  3rd Year
+                </option>
+                <option value="4th Year">
+                  4th Year
+                </option>
+              </select>
+
+              <select
+                value={leaderboardSection}
+                onChange={(event) =>
+                  setLeaderboardSection(
+                    event.target.value
+                  )
+                }
+              >
+                <option value="All">
+                  All Sections
+                </option>
+                <option value="A">
+                  Section A
+                </option>
+                <option value="B">
+                  Section B
+                </option>
+                <option value="C">
+                  Section C
+                </option>
+              </select>
+            </div>
+
+            {leaderboardStudents.length === 0 ? (
+              <div className="mc-empty">
+                No student performance data
+                available for the selected
+                filters.
+              </div>
+            ) : (
+              <div className="mc-table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Rank</th>
+                      <th>Student</th>
+                      <th>USN</th>
+                      <th>Year</th>
+                      <th>Section</th>
+                      <th>Total</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {leaderboardStudents.map(
+                      (student, index) => (
+                        <tr
+                          key={
+                            safeId(student) ||
+                            index
+                          }
+                        >
+                          <td>
+                            <strong>
+                              #{index + 1}
+                            </strong>
+                          </td>
+
+                          <td>
+                            {student.name ||
+                              "—"}
+                          </td>
+
+                          <td>
+                            {student.usn ||
+                              "—"}
+                          </td>
+
+                          <td>
+                            {student.year ||
+                              "—"}
+                          </td>
+
+                          <td>
+                            {student.section ||
+                              "—"}
+                          </td>
+
+                          <td>
+                            <strong>
+                              {
+                                student.leaderboardScore
+                              }
+                            </strong>
+                          </td>
+                        </tr>
+                      )
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        )}
+
+        <div className="mc-kpi-grid"></div>
+
 
 
         {type ===
@@ -4551,51 +5459,103 @@ if (
           HELP MODAL
       ====================== */}
 
-      {help && (
-        <div
-          className="mc-overlay"
-          onClick={() =>
-            setHelp(false)
-          }
-        >
 
+      {help && (
+  <div
+    className="mc-overlay"
+    onClick={() => setHelp(false)}
+  >
+    <div
+      className="mc-modal mc-help-chat"
+      onClick={(event) => event.stopPropagation()}
+    >
+      <button
+        className="mc-close"
+        onClick={() => setHelp(false)}
+      >
+        ×
+      </button>
+
+      <h2>MentorConnect Help</h2>
+
+      <p>
+        Ask questions about the MentorConnect system.
+      </p>
+
+      <div className="mc-chat-messages">
+        {chatMessages.map((message, index) => (
           <div
-            className="mc-modal mc-help-modal"
-            onClick={(event) =>
-              event.stopPropagation()
+            key={index}
+            className={
+              message.from === "user"
+                ? "mc-chat-message user"
+                : "mc-chat-message bot"
             }
           >
+            <strong>
+              {message.from === "user" ? "You" : "Help"}
+            </strong>
 
-            <button
-              className="mc-close"
-              onClick={() =>
-                setHelp(false)
-              }
-            >
-              ×
-            </button>
-
-            <h2>
-              MentorConnect Help
-            </h2>
-
-            <p>
-              Use the role tabs to access each workspace. Data is loaded from the backend and stored in MongoDB. Changes made through the dashboard are synchronized with the backend.
-            </p>
-
-            <button
-              className="mc-primary"
-              onClick={() =>
-                setHelp(false)
-              }
-            >
-              Got it
-            </button>
-
+            <div>{message.text}</div>
           </div>
+        ))}
+      </div>
 
-        </div>
-      )}
+      <div className="mc-chat-input">
+        <input
+          type="text"
+          value={chatInput}
+          placeholder="Ask a question..."
+          onChange={(event) =>
+            setChatInput(event.target.value)
+          }
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              sendChatMessage();
+            }
+          }}
+        />
+
+        <button
+          type="button"
+          className="mc-primary"
+          onClick={sendChatMessage}
+        >
+          Send
+        </button>
+      </div>
+
+      <div className="mc-chat-suggestions">
+        <button
+          type="button"
+          onClick={() =>
+            setChatInput("How do I upload an achievement?")
+          }
+        >
+          Upload achievement
+        </button>
+
+        <button
+          type="button"
+          onClick={() =>
+            setChatInput("How can I check performance?")
+          }
+        >
+          Performance
+        </button>
+
+        <button
+          type="button"
+          onClick={() =>
+            setChatInput("What is Student Risk Monitor?")
+          }
+        >
+          Risk Monitor
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
 
       {/* =====================
@@ -4649,34 +5609,191 @@ function ReportSection({ title, description, children }) {
   );
 }
 
-function AchievementList({ achievements = [], onDelete, readOnly = false }) {
+function AchievementList({
+  achievements = [],
+  onDelete,
+  readOnly = false,
+}) {
+  const [downloading, setDownloading] = useState(false);
+
   if (!achievements.length) {
     return null;
   }
 
+  const downloadBundle = async () => {
+    try {
+      setDownloading(true);
+
+      const zip = new JSZip();
+
+      let addedFiles = 0;
+
+      for (let index = 0; index < achievements.length; index++) {
+        const item = achievements[index];
+
+        if (!item.filePath) {
+          continue;
+        }
+
+        const url = assetUrl(item.filePath);
+
+        if (!url) {
+          continue;
+        }
+
+        const response = await fetch(url);
+
+        if (!response.ok) {
+          console.error(
+            `Unable to download ${item.fileName || "document"}`
+          );
+          continue;
+        }
+
+        const blob = await response.blob();
+
+        const originalName =
+          item.fileName ||
+          `achievement-document-${index + 1}`;
+
+        zip.file(originalName, blob);
+
+        addedFiles++;
+      }
+
+      if (!addedFiles) {
+     alert("No downloadable documents found");
+        return;
+      }
+
+      const zipBlob = await zip.generateAsync({
+        type: "blob",
+      });
+
+      const downloadUrl =
+        window.URL.createObjectURL(zipBlob);
+
+      const link = document.createElement("a");
+
+      link.href = downloadUrl;
+      link.download = "achievement-certificates.zip";
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      console.error(
+        "Achievement bundle error:",
+        error
+      );
+
+      alert(
+        "Unable to create the achievement bundle."
+      );
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   return (
     <div className="mc-achievement-list">
+
+      <div className="mc-achievement-bundle-header">
+        <div>
+          <strong>
+            Uploaded Achievements
+          </strong>
+
+          <small>
+            {achievements.length} document
+            {achievements.length === 1 ? "" : "s"}
+          </small>
+        </div>
+
+        <button
+          type="button"
+          className="mc-primary"
+          onClick={downloadBundle}
+          disabled={downloading}
+        >
+          {downloading
+            ? "Creating ZIP..."
+            : "Download All (.zip)"}
+        </button>
+      </div>
+
       {achievements.map((item, index) => {
-        const id = safeId(item) || index;
-        const url = assetUrl(item.filePath);
+        const id =
+          safeId(item) || index;
+
+        const url =
+          assetUrl(item.filePath);
+
         return (
-          <article className="mc-achievement-item" key={id}>
+          <article
+            className="mc-achievement-item"
+            key={id}
+          >
             <div className="mc-achievement-main">
-              <div className="mc-achievement-icon">★</div>
+
               <div>
-                <h4>{item.title || "Untitled achievement"}</h4>
-                <div className="mc-achievement-meta">
-                  <span>{item.category || "Achievement"}</span>
-                  <span>{item.date || "Date not set"}</span>
-                  {item.fileName && <span>{item.fileName}</span>}
-                </div>
-                {item.description && <p>{item.description}</p>}
+                <strong>
+                  {item.title ||
+                    "Achievement"}
+                </strong>
+
+                {item.category && (
+                  <span className="mc-pill">
+                    {item.category}
+                  </span>
+                )}
               </div>
+
+              {item.date && (
+                <small>
+                  {item.date}
+                </small>
+              )}
+
+              {item.fileName && (
+                <small>
+                  📎 {item.fileName}
+                </small>
+              )}
+
+              {item.description && (
+                <p>
+                  {item.description}
+                </p>
+              )}
             </div>
+
             {url && (
               <div className="mc-achievement-actions">
-                <a className="mc-outline-btn" href={url} target="_blank" rel="noreferrer">Open Document</a>
-                {!readOnly && onDelete && <button className="mc-danger-link" onClick={() => onDelete(id)}>Remove</button>}
+
+                <a
+                  className="mc-outline-btn"
+                  href={url}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Open Document
+                </a>
+
+                {!readOnly &&
+                  onDelete && (
+                    <button
+                      className="mc-danger-link"
+                      onClick={() =>
+                        onDelete(id)
+                      }
+                    >
+                      Remove
+                    </button>
+                  )}
+
               </div>
             )}
           </article>
@@ -4855,6 +5972,12 @@ function Modal({
       "Year",
       "text",
     ],
+
+    [
+  "section",
+  "Section",
+  "section-select",
+],
 
  [
   "mentor",
@@ -5099,70 +6222,71 @@ function Modal({
 
       {label}
 
-      {type === "mentor-select" ? (
-        <select
-          value={item[key] ?? ""}
-          onChange={(event) =>
-            set(
-              key,
-              event.target.value
-            )
+   {type === "mentor-select" ? (
+  <select
+    value={item[key] ?? ""}
+    onChange={(event) =>
+      set(key, event.target.value)
+    }
+    required={key === "mentor"}
+  >
+    <option value="">
+      Select Mentor
+    </option>
+
+    {mentors
+      .filter(
+        (mentor) =>
+          mentor.status === "Active"
+      )
+      .map((mentor) => (
+        <option
+          key={
+            safeId(mentor) ||
+            mentor.name
           }
-          required={
-            key === "mentor"
-          }
+          value={mentor.name || ""}
         >
-          <option value="">
-            Select Mentor
-          </option>
-
-          {mentors
-  .filter(
-    (mentor) =>
-      mentor.status ===
-      "Active"
-  )
-  .map((mentor) => (
-              <option
-                key={
-                  safeId(mentor) ||
-                  mentor.name
-                }
-                value={
-                  mentor.name || ""
-                }
-              >
-                {mentor.name}
-              </option>
-            ))}
-        </select>
-      ) : (
-        <input
-          type={type}
-          value={
-            item[key] ??
-            ""
-          }
-          onChange={(event) =>
-            set(
-              key,
-              event.target.value
-            )
-          }
-          required={
-            [
-              "name",
-              "usn",
-              "title",
-              "date",
-              "course",
-            ].includes(
-              key
-            )
-          }
-        />
-      )}
-
+          {mentor.name}
+        </option>
+      ))}
+  </select>
+) : type === "section-select" ? (
+  <select
+    value={item[key] ?? "A"}
+    onChange={(event) =>
+      set(key, event.target.value)
+    }
+  >
+    <option value="A">
+      Section A
+    </option>
+    <option value="B">
+      Section B
+    </option>
+    <option value="C">
+      Section C
+    </option>
+  </select>
+) : (
+  <input
+    type={type}
+    value={item[key] ?? ""}
+    onChange={(event) =>
+      set(
+        key,
+        event.target.value
+      )
+    }
+    required={[
+      "name",
+      "usn",
+      "title",
+      "date",
+      "course",
+    ].includes(key)}
+  />
+)}
     </label>
   )
 )}
