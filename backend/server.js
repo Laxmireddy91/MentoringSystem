@@ -12,6 +12,10 @@ import authRoutes from "./routes/authRoutes.js";
 import workspaceRoutes from "./routes/workspaceRoutes.js";
 import riskRoutes from "./routes/riskRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
+import hodRoutes from './routes/hodRoutes.js';
+import allocationRoutes from './routes/allocationRoutes.js';
+import reportRoutes from './routes/reportRoutes.js';
+import taskRoutes from './routes/taskRoutes.js';
 
 const app = express();
 
@@ -78,6 +82,11 @@ app.use(
   "/api/messages",
   messageRoutes
 );
+
+app.use('/api/hod', hodRoutes);
+app.use('/api/allocation', allocationRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/tasks', taskRoutes);
 
 /* =========================================================
    404

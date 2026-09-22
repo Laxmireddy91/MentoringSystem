@@ -3,6 +3,8 @@ import express from "express";
 import {
   analyzeStudentRisk,
   analyzeAllStudents,
+  getSettings,
+  upsertSettings
 } from "../controllers/riskController.js";
 
 import {
@@ -12,6 +14,20 @@ import {
 
 const router =
   express.Router();
+
+router.get(
+  "/settings",
+  protect,
+  allowRoles("hod"),
+  getSettings
+);
+
+router.put(
+  "/settings",
+  protect,
+  allowRoles("hod"),
+  upsertSettings
+);
 
 /*
  * Analyze all students

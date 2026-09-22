@@ -1,3 +1,5 @@
+import { getRiskSettings as fetchRiskSettings, upsertRiskSettings as saveRiskSettings } from '../services/riskService.js';
+import { sendSuccess } from '../utils/apiResponse.js';
 import Student from "../models/Student.js";
 
 /*
@@ -5,7 +7,7 @@ import Student from "../models/Student.js";
  *
  * Higher score = higher academic risk.
  */
-function calculateRisk(student) {
+export function calculateRisk(student) {
   let riskScore = 0;
   const reasons = [];
 
@@ -368,4 +370,21 @@ export async function analyzeAllStudents(
 
     next(error);
   }
+}
+
+export async function getSettings(req, res, next) {
+  try {
+    const dept = req.user.department || req.query.department || 'Computer Science & Engineering';
+    const settings = await fetchRiskSettings(dept);
+    return sendSuccess(res, { data: settings });
+  } catch (err) { next(err); }
+}
+
+export async function upsertSettings(req, res, next) {
+  try {
+    const dept = req.user.department || req.body.department;
+    const { cgpaThreshold, backlogThreshold, cieThreshold, attendanceThreshold } = req.body;
+    const settings = await saveRiskSettings(dept, { cgpaThreshold, backlogThreshold, cieThreshold, attendanceThreshold }, req.user.id);
+    return sendSuccess(res, { data: settings }, 'Risk settings updated');
+  } catch (err) { next(err); }
 }

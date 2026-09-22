@@ -26,8 +26,11 @@ const userSchema = new mongoose.Schema(
       enum: [
         "student",
         "mentor",
+        "mentoring_coordinator",
         "hod",
-       
+        "exam_coordinator",
+        "tpo",
+        "parent",
       ],
       required: true,
     },
