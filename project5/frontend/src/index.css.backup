@@ -1,0 +1,62 @@
+/* src/index.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design tokens – role and status colors */
+:root {
+  /* Role colors – set by applyRoleTheme() */
+  --primary-color: var(--primary-color); /* default navy */
+  --primary-dark: var(--primary-dark);
+  --primary-soft: rgba(22, 35, 61, 0.10);
+  --primary-soft-dark: rgba(22, 35, 61, 0.18);
+  --primary-border: rgba(22, 35, 61, 0.20);
+  /* Role accent colors */
+  --role-student: #162D4A;   /* Deep Sapphire */
+  --role-mentor: #0F3D22;    /* Deep Teal */
+  --role-coordinator: #3730A3; /* Deep Indigo */
+  --role-hod: #631616;      /* Deep Burgundy */
+  --role-exam: #0A5F58;     /* Deep Navy */
+  --role-tpo: var(--primary-dark);      /* Deep Forest Green (reuse primary-dark) */
+  --role-parent: var(--primary-soft);    /* Warm Bronze/Gold */
+
+  /* Additional UI palette */
+  --gold: var(--primary-soft);
+  --gold-soft: rgba(181, 138, 61, 0.15);
+  --green: var(--status-success);
+  --green-soft: rgba(47, 99, 80, 0.15);
+  --blue: var(--status-info);
+  --blue-soft: rgba(47, 71, 112, 0.15);
+
+  /* Status colors */
+  --status-success: var(--status-success); /* muted green (emerald-300) */
+  --status-warning: #FBBF24; /* muted amber (amber-400) */
+  --status-error: #F87171; /* muted red (red-400) */
+  --status-info: var(--status-info); /* muted blue (blue-400) */
+}
+
+/* Role utility classes */
+@layer utilities {
+  .bg-role-primary { background-color: var(--primary-color) !important; }
+  .bg-role-soft { background-color: var(--primary-soft) !important; }
+  .bg-role-soft-dark { background-color: var(--primary-soft-dark) !important; }
+  .text-role-primary { color: var(--primary-color) !important; }
+  .border-role-primary { border-color: var(--primary-border) !important; }
+  .focus\:role { outline-color: var(--primary-color) !important; }
+
+  /* Status utility classes */
+  .bg-status-success { background-color: var(--status-success) !important; }
+  .bg-status-warning { background-color: var(--status-warning) !important; }
+  .bg-status-error { background-color: var(--status-error) !important; }
+  .bg-status-info { background-color: var(--status-info) !important; }
+
+  .text-status-success { color: var(--status-success) !important; }
+  .text-status-warning { color: var(--status-warning) !important; }
+  .text-status-error { color: var(--status-error) !important; }
+  .text-status-info { color: var(--status-info) !important; }
+
+  .border-status-success { border-color: var(--status-success) !important; }
+  .border-status-warning { border-color: var(--status-warning) !important; }
+  .border-status-error { border-color: var(--status-error) !important; }
+  .border-status-info { border-color: var(--status-info) !important; }
+}

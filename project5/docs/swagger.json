@@ -1,0 +1,121 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "MentorConnect / Smart Mentoring System API",
+    "version": "1.0.0",
+    "description": "Comprehensive REST API specification for academic mentoring, rule-based risk evaluation, marks immutability, session scheduling, PDF reporting, and Socket.IO real-time communication."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5000/api",
+      "description": "Local Development Server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "paths": {
+    "/auth/register": {
+      "post": {
+        "summary": "Register a new user",
+        "tags": ["Authentication"]
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Authenticate user and receive JWT tokens",
+        "tags": ["Authentication"]
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "summary": "Refresh expired access token with valid refresh token cookie",
+        "tags": ["Authentication"]
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "summary": "Invalidate refresh token and clear cookies",
+        "tags": ["Authentication"]
+      }
+    },
+    "/academics/my-marks": {
+      "get": {
+        "summary": "Get authenticated student academic marks and semester breakdowns",
+        "tags": ["Academics"]
+      }
+    },
+    "/academics/student/{studentId}/semester/{semNumber}": {
+      "put": {
+        "summary": "Update student semester marks and recalculate SGPA (Mentor/HOD only)",
+        "tags": ["Academics"]
+      }
+    },
+    "/risk/my-analysis": {
+      "get": {
+        "summary": "Get student academic risk score breakdown and recommendations",
+        "tags": ["Risk Engine"]
+      }
+    },
+    "/risk/settings": {
+      "get": { "summary": "Get active risk weights and thresholds (HOD only)", "tags": ["Risk Engine"] },
+      "put": { "summary": "Update risk engine weights and thresholds (HOD only)", "tags": ["Risk Engine"] }
+    },
+    "/risk/recalculate-all": {
+      "post": { "summary": "Recalculate risk scores for all students (HOD only)", "tags": ["Risk Engine"] }
+    },
+    "/sessions": {
+      "post": { "summary": "Book a new mentoring session", "tags": ["Sessions"] }
+    },
+    "/sessions/my-sessions": {
+      "get": { "summary": "Get booked sessions for authenticated user", "tags": ["Sessions"] }
+    },
+    "/sessions/{id}/status": {
+      "patch": { "summary": "Update session status (scheduled, in_progress, completed, cancelled)", "tags": ["Sessions"] }
+    },
+    "/sessions/feedback": {
+      "post": { "summary": "Submit 1-5 star feedback and review for completed session", "tags": ["Sessions"] }
+    },
+    "/messages": {
+      "post": { "summary": "Send direct chat message to mentor or mentee", "tags": ["Messages"] }
+    },
+    "/messages/thread/{partnerId}": {
+      "get": { "summary": "Get chat history between authenticated user and partner", "tags": ["Messages"] }
+    },
+    "/reports/student/{studentId}/report-card/pdf": {
+      "get": { "summary": "Generate official PDF Progress Report Card", "tags": ["Reports"] }
+    },
+    "/reports/department/excel": {
+      "get": { "summary": "Export Department Performance Report (.xlsx)", "tags": ["Reports"] }
+    },
+    "/achievements/export/zip": {
+      "get": { "summary": "Export student certificate portfolio as ZIP archive", "tags": ["Achievements"] }
+    },
+    "/imports/students/csv": {
+      "post": { "summary": "Bulk import students from CSV file", "tags": ["Bulk Imports"] }
+    },
+    "/imports/students/excel": {
+      "post": { "summary": "Bulk import students from Excel (.xlsx) file", "tags": ["Bulk Imports"] }
+    },
+    "/hod/overview": {
+      "get": { "summary": "Get HOD department governance metrics", "tags": ["HOD"] }
+    },
+    "/hod/audit-logs": {
+      "get": { "summary": "Get immutable system audit trail logs", "tags": ["HOD"] }
+    },
+    "/parent/my-ward": {
+      "get": { "summary": "Get linked ward academic progress and mentor contact", "tags": ["Parent"] }
+    }
+  }
+}
