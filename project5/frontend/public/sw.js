@@ -1,0 +1,23 @@
+// MentorConnect Service Worker
+// Automatically purges caches and unregisters to prevent stale asset loading
+self.addEventListener('install', () => {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) => {
+      return Promise.all(keys.map((key) => caches.delete(key)));
+    }).then(() => {
+      return self.registration.unregister();
+    }).then(() => {
+      return self.clients.claim();
+    })
+  );
+});
+
+self.addEventListener('fetch', () => {
+  // Direct network requests - do not intercept or cache
+  return;
+});
+

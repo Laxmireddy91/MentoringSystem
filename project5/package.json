@@ -1,0 +1,9 @@
+{
+  "name": "project5-root",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "puppeteer": "^22.8.2",
+    "axios": "^1.7.2"
+  }
+}

@@ -1,0 +1,136 @@
+/* src/index.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design tokens - role and status colors */
+:root {
+  /* Role colors - set by applyRoleTheme() */
+  --primary-color: #162D4A;
+  --primary-dark: #0F172A;
+  --primary-soft: rgba(22, 35, 61, 0.10);
+  --primary-soft-dark: rgba(22, 35, 61, 0.18);
+  --primary-border: rgba(22, 35, 61, 0.20);
+  --primary-text-light: #162D4A;
+  --primary-text-dark: #94A3B8;
+
+  /* Base text tokens for WCAG AA compliance */
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+
+  /* Role accent colors */
+  --role-student: #1E4DB7;
+  --role-mentor: #0F766E;
+  --role-coordinator: #4338CA;
+  --role-hod: #7C1D1D;
+  --role-exam: #1E3A5F;
+  --role-tpo: #14532D;
+  --role-parent: #92400E;
+
+  /* Additional UI palette */
+  --gold: #B58A3D;
+  --gold-soft: rgba(181, 138, 61, 0.15);
+  --green: #2F6350;
+  --green-soft: rgba(47, 99, 80, 0.15);
+  --blue: #2F4770;
+  --blue-soft: rgba(47, 71, 112, 0.15);
+
+  /* Status colors */
+  --status-success: #10b981;
+  --status-warning: #F59E0B;
+  --status-error: #EF4444;
+  --status-info: #3B82F6;
+}
+
+/* Role utility classes */
+@layer utilities {
+  .bg-role-primary { background-color: var(--primary-color) !important; }
+  .bg-role-soft { background-color: var(--primary-soft) !important; }
+  .bg-role-soft-dark { background-color: var(--primary-soft-dark) !important; }
+  .text-role-primary { color: var(--primary-color) !important; }
+  .border-role-primary { border-color: var(--primary-border) !important; }
+  .focus\:role { outline-color: var(--primary-color) !important; }
+
+  /* Status utility classes */
+  .bg-status-success { background-color: rgba(16, 185, 129, 0.12) !important; }
+  .bg-status-success.text-white,
+  button.bg-status-success { background-color: #059669 !important; }
+  .text-status-success { color: #047857 !important; }
+  .border-status-success { border-color: rgba(16, 185, 129, 0.3) !important; }
+
+  .bg-status-warning { background-color: rgba(245, 158, 11, 0.12) !important; }
+  .bg-status-warning.text-white,
+  button.bg-status-warning { background-color: #d97706 !important; }
+  .text-status-warning { color: #b45309 !important; }
+  .border-status-warning { border-color: rgba(245, 158, 11, 0.3) !important; }
+
+  .bg-status-error { background-color: rgba(239, 68, 68, 0.12) !important; }
+  .bg-status-error.text-white,
+  button.bg-status-error { background-color: #dc2626 !important; }
+  .text-status-error { color: #b91c1c !important; }
+  .border-status-error { border-color: rgba(239, 68, 68, 0.3) !important; }
+
+  .bg-status-info { background-color: rgba(59, 130, 246, 0.12) !important; }
+  .bg-status-info.text-white,
+  button.bg-status-info { background-color: #2563eb !important; }
+  .text-status-info { color: #1d4ed8 !important; }
+  .border-status-info { border-color: rgba(59, 130, 246, 0.3) !important; }
+}
+
+/* Dark mode overrides for role and status utilities */
+.dark {
+  --text-primary: #F8FAFC;
+  --text-secondary: #CBD5E1;
+}
+
+.dark .text-role-primary {
+  color: var(--primary-text-dark, var(--primary-text-light)) !important;
+}
+
+.dark .bg-status-success,
+.dark .dark\:bg-status-emerald,
+.dark .dark\:bg-status-success {
+  background-color: rgba(16, 185, 129, 0.20) !important;
+}
+.dark .text-status-success {
+  color: #34d399 !important;
+}
+.dark .border-status-success {
+  border-color: rgba(16, 185, 129, 0.35) !important;
+}
+
+.dark .bg-status-warning,
+.dark .dark\:bg-status-amber,
+.dark .dark\:bg-status-warning {
+  background-color: rgba(245, 158, 11, 0.20) !important;
+}
+.dark .text-status-warning {
+  color: #fbbf24 !important;
+}
+.dark .border-status-warning {
+  border-color: rgba(245, 158, 11, 0.35) !important;
+}
+
+.dark .bg-status-error,
+.dark .dark\:bg-status-red,
+.dark .dark\:bg-status-error {
+  background-color: rgba(239, 68, 68, 0.20) !important;
+}
+.dark .text-status-error {
+  color: #f87171 !important;
+}
+.dark .border-status-error {
+  border-color: rgba(239, 68, 68, 0.35) !important;
+}
+
+.dark .bg-status-info,
+.dark .dark\:bg-status-blue,
+.dark .dark\:bg-status-info {
+  background-color: rgba(59, 130, 246, 0.20) !important;
+}
+.dark .text-status-info {
+  color: #60a5fa !important;
+}
+.dark .border-status-info {
+  border-color: rgba(59, 130, 246, 0.35) !important;
+}
