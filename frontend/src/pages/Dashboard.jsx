@@ -24,6 +24,8 @@ function download(
   const blob = new Blob([content], {
     type,
   });
+  const isStudent = role === "student";
+const isAcademicReadOnly = role === "student";
 
   const url =
     URL.createObjectURL(blob);
@@ -292,6 +294,8 @@ export default function Dashboard({
   role,
   section = "overview",
 }) {
+  const isStudent = role === "student";
+const isAcademicReadOnly = role === "student";
   const navigate = useNavigate();
 
   const info =
@@ -916,7 +920,10 @@ emergencyContact: item.emergencyContact || "",
 
   async function deleteStudent(
     id
-  ) {
+  )
+  if (isAcademicReadOnly) {
+  return;
+} {
     if (role === "mentor") {
       notify(
         "Mentors cannot delete student records"
@@ -962,7 +969,9 @@ emergencyContact: item.emergencyContact || "",
 
   async function addSubject(
     studentId
-  ) {
+  )
+  if (isAcademicReadOnly) {
+  return; {
     const student =
       data.students.find(
         (item) =>
@@ -998,6 +1007,8 @@ emergencyContact: item.emergencyContact || "",
         studentId,
         subjects
       );
+      
+}
 
       await refreshDashboard();
 
@@ -1025,7 +1036,10 @@ emergencyContact: item.emergencyContact || "",
     subjectId,
     key,
     value
-  ) {
+  )
+  if (isAcademicReadOnly) {
+  return;
+} {
     const student =
       data.students.find(
         (item) =>
@@ -1090,6 +1104,9 @@ emergencyContact: item.emergencyContact || "",
   ======================================================= */
 
   async function savePerformanceReport(studentId, report) {
+    if (isAcademicReadOnly) {
+  return;
+}
     try {
       setSaving(true);
 
@@ -3006,7 +3023,17 @@ emergencyContact: item.emergencyContact || "",
                     <td><textarea className="mc-report-input report-textarea" value={row.details || ""} onChange={(event) => updateMentorship(index, "details", event.target.value)} placeholder="Enter mentoring details" /></td>
                     <td><textarea className="mc-report-input report-textarea" value={row.actionTaken || ""} onChange={(event) => updateMentorship(index, "actionTaken", event.target.value)} placeholder="Enter action taken" /></td>
                     <td><label className="mc-check"><input type="checkbox" checked={Boolean(row.studentSigned)} onChange={(event) => updateMentorship(index, "studentSigned", event.target.checked)} /> Signed</label></td>
-                    <td><label className="mc-check"><input type="checkbox" checked={Boolean(row.mentorSigned)} onChange={(event) => updateMentorship(index, "mentorSigned", event.target.checked)} /> Signed</label></td>
+                    <td><label className="mc-check">{isStudent ? (
+  <span>
+    {row.mentorSigned ? "✓ Mentor Signed" : "Not Signed"}
+  </span>
+) : (
+  <input
+    type="checkbox"
+    checked={Boolean(row.mentorSigned)}
+    onChange={(e) => updateMentorship(...)}
+  />
+)}</label></td>
                   </tr>
                 ))}
               </tbody>
@@ -3018,6 +3045,9 @@ emergencyContact: item.emergencyContact || "",
       </section>
     );
   }
+  <span>
+  {row.mentorSigned ? "✓ Mentor Signed" : "Not Signed"}
+</span>
 
   /* =======================================================
      SESSIONS

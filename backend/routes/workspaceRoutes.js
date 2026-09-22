@@ -153,6 +153,7 @@ async function canAccessStudent(req, student) {
 }
 
 async function editAcademicRecord(req, res, next) {
+<<<<<<< HEAD
   if (req.user.role !== "mentor" && req.user.role !== "hod") {
     return res.status(403).json({ success: false, message: "Students can only view academic records" });
   }
@@ -164,9 +165,19 @@ async function editAcademicRecord(req, res, next) {
     description: `${req.user.role} edited an academic record`,
     ipAddress: req.ip,
   });
+=======
+  if (
+    req.user.role !== "mentor" &&
+    req.user.role !== "hod"
+  ) {
+    return res.status(403).json({
+      message: "Students cannot edit academic records",
+    });
+  }
+
+>>>>>>> 5101675 (Update MentoringSystem)
   return next();
 }
-
 
 /*
 |--------------------------------------------------------------------------

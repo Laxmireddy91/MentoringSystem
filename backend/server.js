@@ -13,6 +13,7 @@ import authRoutes from "./routes/authRoutes.js";
 import workspaceRoutes from "./routes/workspaceRoutes.js";
 import riskRoutes from "./routes/riskRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
+import jwt from "jsonwebtoken";
 
 const requiredEnv=["MONGO_URI","JWT_SECRET"];
 for(const key of requiredEnv){ if(!process.env[key]) throw new Error(`Missing required environment variable: ${key}`); }
@@ -77,6 +78,291 @@ async function startServer(){
     socket.on("disconnect",reason=>console.log(`Socket disconnected ${socket.user._id}: ${reason}`));
   });
 
+<<<<<<< HEAD
   httpServer.listen(PORT,()=>console.log(`MentorConnect API listening on ${PORT}`));
+=======
+/* =========================================================
+   ERROR HANDLER
+========================================================= */
+
+app.use((err, req, res, next) => {
+  console.error(
+    "❌ SERVER ERROR:",
+    err
+  );
+
+  res.status(500).json({
+    success: false,
+    message:
+      err.message ||
+      "Internal server error",
+  });
+});
+
+/* =========================================================
+   START SERVER
+========================================================= */
+
+const PORT =
+  process.env.PORT || 5000;
+
+async function startServer() {
+  try {
+    /* -----------------------------------------------------
+       CONNECT DATABASE
+    ----------------------------------------------------- */
+
+    await connectDB();
+
+    /* -----------------------------------------------------
+       CREATE HTTP SERVER
+    ----------------------------------------------------- */
+
+    const httpServer =
+      http.createServer(app);
+
+    /* -----------------------------------------------------
+       CREATE SOCKET.IO SERVER
+    ----------------------------------------------------- */
+
+    const io = new Server(
+      httpServer,
+      {
+        cors: {
+          origin:
+            process.env.CLIENT_URL ||
+            "http://localhost:5173",
+
+          credentials: true,
+        },
+      }
+    );
+    const io = new Server(httpServer, {
+  cors: {
+    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    credentials: true,
+  },
+});
+
+io.use((socket, next) => {
+  try {
+    const token = socket.handshake.auth?.token;
+
+    if (!token) {
+      return next(new Error("Authentication token required"));
+    }
+
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET
+    );
+
+    socket.user = decoded;
+
+    next();
+  } catch (error) {
+    console.error(
+      "Socket authentication failed:",
+      error.message
+    );
+
+    next(new Error("Invalid authentication token"));
+  }
+});
+
+    /* =====================================================
+       SOCKET.IO CONNECTION
+    ===================================================== */
+
+    io.on(
+      "connection",
+      (socket) => {
+        console.log(
+          "🔌 Socket connected:",
+          socket.id
+        );
+
+        /* =================================================
+           JOIN PRIVATE USER ROOM
+        ================================================= */
+
+        socket.on("join", () => {
+  const userId =
+    socket.user?.id ||
+    socket.user?._id ||
+    socket.user?.userId;
+
+  if (!userId) {
+    console.log("⚠️ User ID missing from JWT");
+    return;
+  }
+
+  const room = `user_${userId}`;
+
+  socket.join(room);
+
+  console.log(
+    `👤 User ${userId} joined room ${room}`
+  );
+});
+        /* =================================================
+           REAL-TIME MESSAGE
+        ================================================= */
+
+        socket.on(
+          "send_message",
+          async (data) => {
+            try {
+              const {
+                senderId,
+                receiverId,
+                message,
+              } = data;
+
+              /* -------------------------------------------
+                 VALIDATION
+              ------------------------------------------- */
+
+              if (
+                !senderId ||
+                !receiverId ||
+                !message?.trim()
+              ) {
+                console.log(
+                  "⚠️ Invalid message data"
+                );
+
+                return;
+              }
+
+              console.log(
+                `💬 Message: ${senderId} → ${receiverId}`
+              );
+
+              /* -------------------------------------------
+                 SAVE MESSAGE TO MONGODB
+              ------------------------------------------- */
+
+              const newMessage =
+                await Message.create({
+                  sender: senderId,
+                  receiver: receiverId,
+                  message:
+                    message.trim(),
+                  status: "sent",
+                });
+
+              /* -------------------------------------------
+                 GET COMPLETE MESSAGE
+              ------------------------------------------- */
+
+              const populatedMessage =
+                await Message.findById(
+                  newMessage._id
+                )
+                  .populate(
+                    "sender",
+                    "name email role"
+                  )
+                  .populate(
+                    "receiver",
+                    "name email role"
+                  );
+
+              /* -------------------------------------------
+                 SEND TO RECEIVER
+              ------------------------------------------- */
+
+              io.to(
+                `user_${receiverId}`
+              ).emit(
+                "receive_message",
+                {
+                  message:
+                    populatedMessage,
+                }
+              );
+
+              /* -------------------------------------------
+                 SEND BACK TO SENDER
+              ------------------------------------------- */
+
+              io.to(
+                `user_${senderId}`
+              ).emit(
+                "message_sent",
+                {
+                  message:
+                    populatedMessage,
+                }
+              );
+
+              console.log(
+                "✅ Message saved and delivered"
+              );
+
+            } catch (error) {
+              console.error(
+                "❌ Socket message error:",
+                error
+              );
+
+              socket.emit(
+                "message_error",
+                {
+                  message:
+                    "Unable to send message",
+                }
+              );
+            }
+          }
+        );
+
+        /* =================================================
+           DISCONNECT
+        ================================================= */
+
+        socket.on(
+          "disconnect",
+          () => {
+            console.log(
+              "🔌 Socket disconnected:",
+              socket.id
+            );
+          }
+        );
+      }
+    );
+
+    /* =====================================================
+       START HTTP + SOCKET.IO SERVER
+    ===================================================== */
+
+    httpServer.listen(
+      PORT,
+      () => {
+        console.log(
+          `🚀 API running on http://localhost:${PORT}`
+        );
+
+        console.log(
+          `❤️ Health: http://localhost:${PORT}/api/health`
+        );
+
+        console.log(
+          "💬 Socket.IO ready"
+        );
+      }
+    );
+
+  } catch (error) {
+    console.error(
+      "❌ Server startup failed:",
+      error
+    );
+
+    process.exit(1);
+  }
+>>>>>>> 5101675 (Update MentoringSystem)
 }
 startServer().catch(err=>{console.error("FATAL STARTUP ERROR",err);process.exit(1);});
