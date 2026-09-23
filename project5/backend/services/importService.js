@@ -220,26 +220,24 @@ class ImportService {
       const academicYear = academicYearRaw || '2025-2026';
 
       try {
-        await AuthService.register(
-          {
-            name,
-            email,
-            password: 'Student@123',
-            role: ROLES.STUDENT,
-            department,
-            program,
-            usn,
-            phone,
-            semester,
-            section,
-            batch,
-            admissionYear,
-            academicYear,
-            entryType,
-            status,
-          },
-          hodUser
-        );
+        const StudentRecord = require('../models/StudentRecord');
+        await StudentRecord.create({
+          usn,
+          email,
+          name,
+          department,
+          batch,
+          semester,
+          section,
+          phone,
+          isActivated: false,
+          createdBy: hodUser._id,
+        });
+
+        const emailService = require('./emailService');
+        const activationUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}/activate?tab=student`;
+        emailService.sendActivationEmail(email, name, 'student', activationUrl).catch(e => console.error('Email error:', e.message));
+
         createdCount++;
       } catch (err) {
         failureCount++;
@@ -1434,6 +1432,160 @@ class ImportService {
       importedRecords: successCount,
       errors,
     };
+  }
+
+  static async previewMentorImport(filePath, hodUser) {
+    let rawRecords = [];
+    const isExcel = filePath.endsWith('.xlsx') || filePath.endsWith('.xls');
+    const csvParser = require('csv-parser');
+    const ExcelJS = require('exceljs');
+
+    if (isExcel) {
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.readFile(filePath);
+      const sheet = workbook.worksheets[0];
+      const headers = [];
+      sheet.getRow(1).eachCell((cell, colNumber) => {
+        headers[colNumber] = String(cell.value || '').trim();
+      });
+
+      sheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return;
+        const rowData = {};
+        row.eachCell((cell, colNumber) => {
+          const key = headers[colNumber];
+          if (key) rowData[key] = typeof cell.value === 'object' && cell.value?.text ? cell.value.text : cell.value;
+        });
+        if (Object.keys(rowData).length > 0) rawRecords.push(rowData);
+      });
+    } else {
+      await new Promise((resolve, reject) => {
+        fs.createReadStream(filePath)
+          .pipe(csvParser())
+          .on('data', (data) => rawRecords.push(data))
+          .on('end', resolve)
+          .on('error', reject);
+      });
+    }
+
+    let validRows = 0;
+    let errorRows = 0;
+    let preview = [];
+    const { StaffRecord, User } = require('../models');
+
+    for (let i = 0; i < rawRecords.length; i++) {
+      const row = rawRecords[i];
+      const employeeId = ImportService.getRowValue(row, 'employeeId', 'Employee ID', 'EmpID', 'id');
+      const name = ImportService.getRowValue(row, 'name', 'Name');
+      const email = ImportService.getRowValue(row, 'email', 'Email');
+      const department = ImportService.getRowValue(row, 'department', 'Dept', 'Department');
+      const designation = ImportService.getRowValue(row, 'designation', 'Designation');
+      const rawRole = ImportService.getRowValue(row, 'role', 'Role');
+
+      let status = 'valid';
+      let rowReasons = [];
+
+      if (!employeeId) { status = 'error'; rowReasons.push('Missing Employee ID'); }
+      if (!name) { status = 'error'; rowReasons.push('Missing Name'); }
+      if (!email) { status = 'error'; rowReasons.push('Missing Email'); }
+      if (!department) { status = 'error'; rowReasons.push('Missing Department'); }
+      
+      const role = rawRole ? String(rawRole).toLowerCase() : 'mentor';
+      if (!['mentor', 'mentoring_coordinator', 'exam_coordinator', 'tpo'].includes(role)) {
+         status = 'error'; rowReasons.push('Invalid role (must be mentor, mentoring_coordinator, exam_coordinator, or tpo)');
+      }
+
+      if (status === 'valid') {
+        const existingStaff = await StaffRecord.findOne({ $or: [{ employeeId: String(employeeId).toUpperCase() }, { email: String(email).toLowerCase() }] });
+        if (existingStaff) {
+          status = 'duplicate';
+          rowReasons.push('StaffRecord with this Employee ID or Email already exists');
+        } else {
+           const existingUser = await User.findOne({ email: String(email).toLowerCase() });
+           if (existingUser) {
+             status = 'error';
+             rowReasons.push('Email is already registered to another account');
+           }
+        }
+      }
+
+      if (status === 'error') errorRows++;
+      if (status === 'valid' || status === 'duplicate') validRows++;
+
+      preview.push({
+        row: i + 2,
+        employeeId: employeeId ? String(employeeId).toUpperCase() : '',
+        name,
+        email: email ? String(email).toLowerCase() : '',
+        department,
+        designation: designation || 'Faculty',
+        role,
+        status,
+        reason: rowReasons.join('; ')
+      });
+    }
+
+    try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch(e) {}
+
+    return { totalProcessed: rawRecords.length, validRows, errorRows, preview };
+  }
+
+  static async confirmMentorImport(previewData, hodUser) {
+    let successCount = 0;
+    let failureCount = 0;
+    let duplicates = [];
+    let errors = [];
+    const { StaffRecord, User } = require('../models');
+    const emailService = require('./emailService');
+    const AuditService = require('./auditService');
+
+    for (const item of previewData) {
+      if (item.status === 'error' || item.status === 'duplicate') continue;
+      
+      try {
+        await StaffRecord.create({
+          employeeId: item.employeeId,
+          email: item.email,
+          name: item.name,
+          department: item.department,
+          designation: item.designation,
+          role: item.role,
+          isActivated: false,
+          createdBy: hodUser._id
+        });
+
+        // Also create User with isActivated: false so they can request activation link if needed
+        await User.create({
+          name: item.name,
+          email: item.email,
+          role: item.role,
+          department: item.department,
+          isActive: true,
+          isActivated: false,
+          isEmailVerified: false
+        });
+
+        const activationUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}/activate?tab=staff`;
+        emailService.sendActivationEmail(item.email, item.name, 'staff', activationUrl).catch(e => console.error('Email err:', e.message));
+
+        successCount++;
+      } catch (err) {
+        failureCount++;
+        errors.push({ employeeId: item.employeeId, reason: err.message });
+      }
+    }
+
+    await AuditService.logAction({
+      actorId: hodUser._id,
+      actorRole: hodUser.role,
+      actorName: hodUser.name,
+      action: 'MENTOR_IMPORT',
+      entity: 'StaffRecord',
+      newValue: { successCount, failureCount },
+      description: `Bulk imported mentors: ${successCount} created, ${failureCount} failed`
+    });
+
+    return { successCount, failureCount, errors };
   }
 }
 

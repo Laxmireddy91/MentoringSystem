@@ -129,10 +129,25 @@ const sendWeeklyRiskDigestEmail = async (mentorEmail, mentorName, studentList) =
   return sendEmail({ to: mentorEmail, subject: 'Weekly Academic Risk Summary - MentorConnect', html });
 };
 
+const sendActivationEmail = async (email, name, role, activationUrl) => {
+  const roleName = role === 'student' ? 'Student' : 'Staff/Faculty';
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; text-align: center;">
+      <h2 style="color: #2563eb;">Welcome to MentorConnect, ${name}</h2>
+      <p style="font-size: 16px; color: #4b5563;">Your official ${roleName} account has been pre-registered by the institution.</p>
+      <p style="font-size: 16px; color: #4b5563;">Please click the button below to activate your account and set up your secure password.</p>
+      <a href="${activationUrl}" style="display: inline-block; margin: 20px 0; padding: 12px 24px; background-color: #2563eb; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">Activate Account</a>
+      <p style="font-size: 14px; color: #6b7280; margin-top: 30px;">If you didn't expect this invitation, please contact your department coordinator.</p>
+    </div>
+  `;
+  return sendEmail({ to: email, subject: 'Action Required: Activate your MentorConnect Account', html });
+};
+
 module.exports = {
   sendEmail,
   sendVerificationEmail,
   sendPasswordResetEmail,
   sendSessionNotificationEmail,
   sendWeeklyRiskDigestEmail,
+  sendActivationEmail,
 };

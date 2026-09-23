@@ -669,13 +669,13 @@ const seedDatabase = async () => {
     console.log('💼 Creating Placement Drives & Student Profiles...');
 
     const tcsDrive = await PlacementDrive.create({
-      title: 'TCS Campus Recruitment 2026 - Ninja & Digital Cadres',
-      companyName: 'Tata Consultancy Services',
+      role: 'TCS Campus Recruitment 2026 - Ninja & Digital Cadres',
+      company: 'Tata Consultancy Services',
       description: 'Pan-India hiring drive for Final Year & Pre-final Year B.E. Computer Science & Engineering students.',
       eligibleDepartments: ['CSE', 'ISE'],
-      minimumCgpa: 7.0,
-      maximumBacklogs: 0,
-      packageDetails: '7.5 LPA - 9.0 LPA (Digital), 3.6 LPA (Ninja)',
+      minCGPA: 7.0,
+      maxBacklogs: 0,
+      ctc: '7.5 LPA - 9.0 LPA (Digital), 3.6 LPA (Ninja)',
       jobLocation: 'Bengaluru / Pune / Hyderabad',
       applicationDeadline: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
       driveDate: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000),
@@ -684,13 +684,13 @@ const seedDatabase = async () => {
     });
 
     const infosysDrive = await PlacementDrive.create({
-      title: 'Infosys Specialist Programmer (SP) & SES National Challenge',
-      companyName: 'Infosys Limited',
+      role: 'Infosys Specialist Programmer (SP) & SES National Challenge',
+      company: 'Infosys Limited',
       description: 'Competitive programming and core software engineering recruitment for tier-1 algorithmic engineers.',
       eligibleDepartments: ['CSE'],
-      minimumCgpa: 7.5,
-      maximumBacklogs: 0,
-      packageDetails: '9.5 LPA - 12.0 LPA',
+      minCGPA: 7.5,
+      maxBacklogs: 0,
+      ctc: '9.5 LPA - 12.0 LPA',
       jobLocation: 'Bengaluru / Mysuru',
       applicationDeadline: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000),
       driveDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
@@ -739,7 +739,7 @@ const seedDatabase = async () => {
         mentorId: primaryMentor._id,
         title: 'Hall Ticket Issuance Review',
         description: 'Special review request for Semester 7 Hall Ticket issuance under mentor undertaking.',
-        requestType: REQUEST_TYPES.HALL_TICKET,
+        requestType: REQUEST_TYPES.EXAM_PERMISSION,
         semester: arjunStudent.semester,
         status: REQUEST_STATUS.SUBMITTED,
       });
